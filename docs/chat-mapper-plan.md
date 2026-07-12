@@ -71,6 +71,14 @@ No backend. No API keys. No server.
 - 3-step UI stepper: Pull → Embed → Cluster
 - Tested: 40 topic clusters from 2,751 messages
 
+### Phase 3.5 — Temporal + reply chain awareness ✅
+
+- Reply chains (replyTo field) resolved via Union-Find into forced same-cluster groups
+- Chronological proximity based on message position index, not wall-clock time
+- \( \text{proximity} = 0.5^{|pos_i - pos_j| / 10} \) — adjacent messages always get 1.0
+- Combined score: \( 0.7 \times \text{cosine} + 0.3 \times \text{chronoProximity} \)
+- Min similarity threshold: 0.4 (chronological component boosts it)
+
 ### Phase 4 — Mindmap + search
 
 - D3 force simulation: clusters as nodes, similarity as edges

@@ -60,7 +60,8 @@ OAuth was the original plan, but the Bluesky Chat service requires `com.atproto.
 | 1 — Auth + chat picker | ✅ Done |
 | 2 — Pull + store | ⬜ Next |
 | 3 — Embed + cluster | ✅ Done |
-| 4 — Mindmap + search | ⬜ |
+| 3.5 — Temporal + reply chains | ✅ Done |
+| 4 — Mindmap + search | ⬜ Next |
 
 See [docs/chat-mapper-plan.md](docs/chat-mapper-plan.md) for the full plan.
 
@@ -71,4 +72,4 @@ See [docs/chat-mapper-plan.md](docs/chat-mapper-plan.md) for the full plan.
 - **Why not OAuth**: OAuth tokens were rejected (401/403) by this PDS for chat proxying. The DPoP-based tokens may work on other PDS instances but not reliably.
 - **Bundle**: ~137KB gzipped + 5MB WASM (cached). Cluster module code-split at 3KB.
 - **Deploy**: `pnpm deploy` runs `vite build` then `gh-pages -d dist`. GitHub Pages CDN has ~10min cache.
-- **Phase 4 entry point**: `src/app.tsx` — "Generate Map" button → wire to D3 force-directed mindmap visualization.
+- **Phase 4 entry point**: `src/app.tsx` — "Generate Map" button → wire to D3 force-directed mindmap using cluster data from `clusterMessages()`.
