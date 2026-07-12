@@ -63,6 +63,8 @@ export interface MessageView {
   text: string;
   senderDid: string;
   sentAt: string;
+  /** id of the message this is a reply to, if any */
+  replyTo?: string;
   /** Sender profile if available from relatedProfiles */
   senderHandle?: string;
   senderDisplayName?: string;
@@ -116,6 +118,7 @@ export async function fetchMessages(
         text: string;
         sender: { did: string };
         sentAt: string;
+        replyTo?: { messageId?: string };
       };
 
       // Stop if we've gone past the time cutoff
@@ -137,6 +140,7 @@ export async function fetchMessages(
         text: msg.text,
         senderDid: msg.sender.did,
         sentAt: msg.sentAt,
+        replyTo: msg.replyTo?.messageId,
         senderHandle: profile?.handle,
         senderDisplayName: profile?.displayName,
       });
