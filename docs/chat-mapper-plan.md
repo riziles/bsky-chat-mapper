@@ -86,6 +86,24 @@ No backend. No API keys. No server.
 - Click cluster → see representative messages
 - Vector search bar: type query → embed → highlight nearest nodes
 
+### Phase 5 — Polish & quality-of-life
+
+**5a — Quick wins**
+- [ ] Draggable force graph nodes (d3-drag)
+- [ ] Add MIT license file (verify compatible with deps)
+- [ ] Custom date range input alongside presets
+
+**5b — UX improvements**
+- [ ] Show cluster messages in sidebar on graph node click (top-5 representative messages from IndexedDB)
+- [ ] Auto-run steps: fetch → embed → cluster without button clicks; stacked progress bars, cancel at any point
+- [ ] Incremental pulls: store last-seen message cursor per convo; subsequent fetches only pull new messages
+
+### Phase 6 — Deeper analysis
+
+- [ ] Better cluster names (TF-IDF distinctive terms, small client-side NER model)
+- [ ] Per-message semantic search (search all messages, not just cluster centroids)
+- [ ] LLM-based cluster summarization (requires API key — opt-in feature)
+
 ## Data Model
 
 ```ts

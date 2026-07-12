@@ -1,8 +1,0 @@
-# Globally enforce a line length (e.g., 80, 100, or 120 characters)
-[global]
-line-length = 80
-
-[MD013]
-# Enable automatic text reflow/wrapping when you run 'rumdl fmt'
-reflow = true
-reflow-mode = "default"
