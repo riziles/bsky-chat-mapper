@@ -49,9 +49,9 @@ public/
 - Lists accepted conversations with group name, member count, last message
 - Deployed at https://riziles.github.io/bsky-chat-mapper/
 
-### Key Decision: App password auth over OAuth
+### Key Decision: Full password auth over OAuth
 
-OAuth was the original plan, but the Bluesky Chat service requires `com.atproto.access` scope tokens. App passwords (`com.atproto.appPass`) are rejected ("Bad token method"). Full credentials via `createSession` work because they produce `access` scope tokens. OAuth may be revisited later.
+OAuth was the original plan, but the Bluesky Chat service requires `com.atproto.access` scope tokens. App passwords (`com.atproto.appPass`) are rejected ("Bad token method"). Full credentials via `createSession` produce the required `access` scope. OAuth may be revisited later.
 
 ## Phases (from plan)
 
@@ -71,5 +71,4 @@ See [docs/chat-mapper-plan.md](docs/chat-mapper-plan.md) for the full plan.
 - **Why not OAuth**: OAuth tokens were rejected (401/403) by this PDS for chat proxying. The DPoP-based tokens may work on other PDS instances but not reliably.
 - **Bundle**: ~132KB gzipped (includes all atproto deps).
 - **Deploy**: `pnpm deploy` runs `vite build` then `gh-pages -d dist`. GitHub Pages CDN has ~10min cache.
-- **Playwright testing**: Saved bsky.app session at `.playwright-cli/bsky-auth.json` (gitignored). Can be used for future testing.
-- **Phase 2 entry point**: `src/app.tsx` line with `onClick={() => alert("Phase 2 coming soon!")}` — wire to message fetching + time filter UI.
+**Phase 2 entry point**: `src/app.tsx` line with `onClick={() => alert("Phase 2 coming soon!")}` — wire to message fetching + time filter UI.

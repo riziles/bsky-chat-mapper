@@ -1,6 +1,6 @@
 # Bluesky Chat Mapper — Static Web App
 
-A static web app that connects to Bluesky via OAuth, pulls a single group chat's history, generates semantic embeddings client-side with Ternlight WASM, and renders an interactive mindmap of the conversation.
+A static web app that connects to Bluesky via password auth, pulls a single group chat's history, generates semantic embeddings client-side with Ternlight WASM, and renders an interactive mindmap of the conversation.
 
 No backend. No API keys. No server.
 
@@ -14,7 +14,7 @@ No backend. No API keys. No server.
 │                                                    │
 │  public/client-metadata.json    ← OAuth metadata   │
 │  src/                                            │
-│    auth.ts        ← OAuth (PKCE + DPoP)           │
+│    auth.ts        ← createSession + proxy header    │
 │    api.ts         ← ATProto chat fetching          │
 │    db.ts          ← IndexedDB wrapper              │
 │    embed.ts       ← Ternlight WASM worker          │
@@ -23,7 +23,7 @@ No backend. No API keys. No server.
 │    App.tsx        ← UI shell                       │
 │                                                    │
 │  User flow:                                        │
-│  1. Visit site → OAuth popup → authorize           │
+│  1. Visit site → enter handle + password            │
 │  2. List group chats → pick one                    │
 │  3. Set time filter (e.g. last 3 months)           │
 │  4. "Generate Map" → pull → embed → render         │
@@ -34,7 +34,7 @@ No backend. No API keys. No server.
 
 | Purpose | Package | Size |
 |---|---|---|
-| Auth | `@atproto/oauth-client-browser` | ~50KB |
+| Auth | `@atproto/api` (AtpAgent) | bundled |
 | API | `@atproto/api` | bundled |
 | Embeddings | `@ternlight/mini` | 5.5MB WASM |
 | Graph | `d3-force`, `d3-selection` | ~30KB |
@@ -47,7 +47,7 @@ No backend. No API keys. No server.
 
 - `client-metadata.json` deployed at root
 - ~~OAuth login flow (PKCE + DPoP via Web Crypto API)~~
-- **Actually implemented: createSession (app password) auth** — see findings below
+- **Actually implemented: createSession (full password) auth** — see findings below
 - Fetch convo list, display names + member counts
 - User picks one
 - Deployed at https://riziles.github.io/bsky-chat-mapper/
