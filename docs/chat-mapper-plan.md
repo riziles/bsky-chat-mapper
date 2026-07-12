@@ -52,11 +52,14 @@ No backend. No API keys. No server.
 - User picks one
 - Deployed at https://riziles.github.io/bsky-chat-mapper/
 
-### Phase 2 — Pull + store
+### Phase 2 — Pull + store ✅
 
 - Time filter UI (preset: 1/3/6/12 months, or custom date range)
 - Paginated fetch with progress bar
+- Cancel support via AbortController
 - Store messages in IndexedDB keyed by `convoId`
+- Summary view with message count, date range, Generate Map stub
+- Tested: 2,858 messages from a 50-member group in ~10 seconds
 
 ### Phase 3 — Embed + cluster
 

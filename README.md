@@ -69,6 +69,6 @@ See [docs/chat-mapper-plan.md](docs/chat-mapper-plan.md) for the full plan.
 - **Auth**: Uses `AtpAgent` with full credentials. Proxy header added via `configureProxy("did:web:api.bsky.chat#bsky_chat")`. Session stored in localStorage under `bsky-chat-mapper-session`.
 - **Chat API**: All calls go through `scalycap.us-west.host.bsky.network` (Bluesky's PDS infrastructure) with the proxy header. Direct calls to `api.bsky.app` or `bsky.social` don't work for chat.
 - **Why not OAuth**: OAuth tokens were rejected (401/403) by this PDS for chat proxying. The DPoP-based tokens may work on other PDS instances but not reliably.
-- **Bundle**: ~132KB gzipped (includes all atproto deps).
+- **Bundle**: ~135KB gzipped (includes all atproto deps).
 - **Deploy**: `pnpm deploy` runs `vite build` then `gh-pages -d dist`. GitHub Pages CDN has ~10min cache.
-**Phase 2 entry point**: `src/app.tsx` line with `onClick={() => alert("Phase 2 coming soon!")}` — wire to message fetching + time filter UI.
+- **Phase 3 entry point**: `src/app.tsx` — "Generate Map" button → wire to embedding + clustering pipeline.
