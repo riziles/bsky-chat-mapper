@@ -59,7 +59,7 @@ OAuth was the original plan, but the Bluesky Chat service requires `com.atproto.
 |---|---|
 | 1 — Auth + chat picker | ✅ Done |
 | 2 — Pull + store | ⬜ Next |
-| 3 — Embed + cluster | ⬜ |
+| 3 — Embed + cluster | ✅ Done |
 | 4 — Mindmap + search | ⬜ |
 
 See [docs/chat-mapper-plan.md](docs/chat-mapper-plan.md) for the full plan.
@@ -69,6 +69,6 @@ See [docs/chat-mapper-plan.md](docs/chat-mapper-plan.md) for the full plan.
 - **Auth**: Uses `AtpAgent` with full credentials. Proxy header added via `configureProxy("did:web:api.bsky.chat#bsky_chat")`. Session stored in localStorage under `bsky-chat-mapper-session`.
 - **Chat API**: All calls go through `scalycap.us-west.host.bsky.network` (Bluesky's PDS infrastructure) with the proxy header. Direct calls to `api.bsky.app` or `bsky.social` don't work for chat.
 - **Why not OAuth**: OAuth tokens were rejected (401/403) by this PDS for chat proxying. The DPoP-based tokens may work on other PDS instances but not reliably.
-- **Bundle**: ~135KB gzipped (includes all atproto deps).
+- **Bundle**: ~137KB gzipped + 5MB WASM (cached). Cluster module code-split at 3KB.
 - **Deploy**: `pnpm deploy` runs `vite build` then `gh-pages -d dist`. GitHub Pages CDN has ~10min cache.
-- **Phase 3 entry point**: `src/app.tsx` — "Generate Map" button → wire to embedding + clustering pipeline.
+- **Phase 4 entry point**: `src/app.tsx` — "Generate Map" button → wire to D3 force-directed mindmap visualization.
