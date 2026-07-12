@@ -26,38 +26,33 @@ export interface ClusterResult {
   replyChains?: { fromId: string; toId: string }[];
 }
 
-const ALPHA_TEMPORAL = 1 / (60 * 10); // 10-minute half-life
+const HALF_LIFE = 10; // half-life in message-position distance
 const W_SEMANTIC = 0.7;
-const W_TEMPORAL = 0.3;
+const W_CHRONO = 0.3;
 
 /**
- * Convert sentAt ISO string to Unix seconds.
+ * Chronological proximity: messages closer in the conversation's
+ * sequence order are more likely related. Uses position index, not
+ * wall-clock time — two messages back-to-back at midnight get the
+ * same boost as two back-to-back at noon.
  */
-function toEpoch(iso: string): number {
-  return new Date(iso).getTime() / 1000;
+function chronoProximity(posA: number, posB: number): number {
+  const delta = Math.abs(posA - posB);
+  return Math.pow(0.5, delta / HALF_LIFE);
 }
 
 /**
- * Temporal proximity: decays exponentially with time distance.
- * Returns 0..1, where 1 = same moment.
- */
-function temporalProximity(t1: number, t2: number): number {
-  const delta = Math.abs(t1 - t2);
-  return Math.exp(-ALPHA_TEMPORAL * delta);
-}
-
-/**
- * Combined score: weighted blend of semantic and temporal proximity.
+ * Combined score: weighted blend of semantic and chronological proximity.
  */
 function combinedScore(
   vecA: Float32Array,
   vecB: Float32Array,
-  timeA: number,
-  timeB: number,
+  posA: number,
+  posB: number,
 ): number {
-  const sem = Math.max(0, cosineSim(vecA, vecB)); // clamp negative sim to 0
-  const temp = temporalProximity(timeA, timeB);
-  return W_SEMANTIC * sem + W_TEMPORAL * temp;
+  const sem = Math.max(0, cosineSim(vecA, vecB));
+  const chrono = chronoProximity(posA, posB);
+  return W_SEMANTIC * sem + W_CHRONO * chrono;
 }
 
 // Helper: L2-normalize a vector
@@ -186,8 +181,8 @@ export function clusterMessages(
     maxClusters?: number;
     passes?: number;
     wSemantic?: number;
-    wTemporal?: number;
-    temporalHalfLife?: number; // seconds
+    wChrono?: number;
+    chronoHalfLife?: number; // position-distance half-life
     onProgress?: (pass: number, clusters: number) => void;
   } = {},
 ): ClusterResult {
@@ -206,16 +201,20 @@ export function clusterMessages(
   const { forcedGroups, remaining, replyChains } =
     preClusterReplyChains(embedded);
 
-  // Pre-compute normalized vectors and epochs
+  // Sort by sentAt ascending to build chronological position index
+  const sorted = [...embedded].sort(
+    (a, b) => a.sentAt.localeCompare(b.sentAt),
+  );
+  const position = new Map<string, number>();
+  sorted.forEach((m, i) => position.set(m.id, i));
+
+  // Pre-compute normalized vectors and positions
   const msgMap = new Map(embedded.map((m) => [m.id, m]));
   const getVec = (id: string) => {
     const m = msgMap.get(id);
     return m ? norm(m.embedding!) : new Float32Array(384);
   };
-  const getTime = (id: string) => {
-    const m = msgMap.get(id);
-    return m ? toEpoch(m.sentAt) : 0;
-  };
+  const getPos = (id: string) => position.get(id) ?? 0;
 
   // Initialize clusters from forced groups
   let clusters: { ids: string[]; centroid: Float32Array }[] = [];
@@ -228,16 +227,16 @@ export function clusterMessages(
   // Greedy assignment for remaining messages
   for (const msg of remaining) {
     const vec = getVec(msg.id);
-    const time = getTime(msg.id);
+    const pos = getPos(msg.id);
 
     let bestIdx = -1;
     let bestScore = -1;
 
     for (let i = 0; i < clusters.length; i++) {
-      const cTime = clusters[i].ids.length > 0
-        ? getTime(clusters[i].ids[0])
-        : time;
-      const score = combinedScore(vec, clusters[i].centroid, time, cTime);
+      const cPos = clusters[i].ids.length > 0
+        ? getPos(clusters[i].ids[0])
+        : pos;
+      const score = combinedScore(vec, clusters[i].centroid, pos, cPos);
       if (score > bestScore) {
         bestScore = score;
         bestIdx = i;
@@ -270,22 +269,22 @@ export function clusterMessages(
     for (const c of clusters) {
       for (const id of c.ids) {
         const vec = getVec(id);
-        const time = getTime(id);
+        const pos = getPos(id);
         const isForced = forcedGroups.some((g) => g.has(id));
         const forcedIdx = clusters.findIndex((cl) => cl.ids.includes(id));
 
         let bestIdx = forcedIdx >= 0 ? forcedIdx : -1;
         let bestScore = forcedIdx >= 0
-          ? combinedScore(vec, clusters[forcedIdx].centroid, time, getTime(clusters[forcedIdx].ids[0]))
+          ? combinedScore(vec, clusters[forcedIdx].centroid, pos, getPos(clusters[forcedIdx].ids[0]))
           : -1;
 
         // Only consider reassignment if not in a forced group
         if (!isForced) {
           for (let i = 0; i < newClusters.length; i++) {
-            const cTime = newClusters[i].ids.length > 0
-              ? getTime(newClusters[i].ids[0])
-              : time;
-            const score = combinedScore(vec, newClusters[i].centroid, time, cTime);
+            const cPos = newClusters[i].ids.length > 0
+              ? getPos(newClusters[i].ids[0])
+              : pos;
+            const score = combinedScore(vec, newClusters[i].centroid, pos, cPos);
             if (score > bestScore) {
               bestScore = score;
               bestIdx = i;
