@@ -18,10 +18,15 @@ type AppState = "loading" | "login" | "picker" | "processing" | "graph";
 // Processing phases within the processing view
 type Phase = "fetch" | "embed" | "cluster" | "done";
 
-type TimeRange = "all" | "1m" | "3m" | "6m" | "12m";
+type TimeRange = "all" | "1m" | "3m" | "6m" | "12m" | "custom";
 
-function timeRangeToDate(range: TimeRange): Date | undefined {
+function timeRangeToDate(range: TimeRange, customDays?: number): Date | undefined {
   if (range === "all") return undefined;
+  if (range === "custom" && customDays) {
+    const d = new Date();
+    d.setDate(d.getDate() - customDays);
+    return d;
+  }
   const months: Record<string, number> = {
     "1m": 1,
     "3m": 3,
@@ -46,6 +51,7 @@ export function App() {
   const [selectedConvo, setSelectedConvo] = useState<ConvoSummary | null>(null);
   const [phase, setPhase] = useState<Phase>("fetch");
   const [timeRange, setTimeRange] = useState<TimeRange>("all");
+  const [customDays, setCustomDays] = useState<number>(30);
   const [fetching, setFetching] = useState(false);
   const [fetchProgress, setFetchProgress] = useState<FetchProgress | null>(null);
   const [fetchedMsgs, setFetchedMsgs] = useState<MessageView[]>([]);
@@ -116,6 +122,7 @@ export function App() {
     setSelectedConvo(convo);
     setPhase("fetch");
     setTimeRange("all");
+    setCustomDays(30);
     setFetching(false);
     setFetchProgress(null);
     setFetchedMsgs([]);
@@ -148,7 +155,7 @@ export function App() {
 
     try {
       const msgs = await fetchMessages(a, selectedConvo.id, {
-        before: timeRangeToDate(timeRange),
+        before: timeRangeToDate(timeRange, customDays),
         signal: controller.signal,
         onProgress(p) {
           setFetchProgress(p.done ? p : { ...p });
@@ -501,7 +508,23 @@ export function App() {
                 <option value="3m">Last 3 months</option>
                 <option value="6m">Last 6 months</option>
                 <option value="12m">Last year</option>
+                <option value="custom">Custom…</option>
               </select>
+
+              {timeRange === "custom" && (
+                <label class="custom-days">
+                  <input
+                    type="number"
+                    min={1}
+                    max={3650}
+                    value={customDays}
+                    onChange={(e) => setCustomDays(Number(e.currentTarget.value) || 30)}
+                    disabled={fetching}
+                    class="custom-days-input"
+                  />
+                  days
+                </label>
+              )}
 
               {!fetching && (
                 <button class="fetch-btn" onClick={startFetch}>

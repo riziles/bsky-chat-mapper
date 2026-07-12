@@ -263,6 +263,21 @@ header h1 {
   color: #fff;
 }
 
+.custom-days {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.custom-days-input {
+  width: 4.5rem;
+  padding: 0.35rem 0.5rem;
+  text-align: right;
+}
+
 /* ---- Progress Bar ---- */
 .progress-section {
   margin: 1.5rem 0;
