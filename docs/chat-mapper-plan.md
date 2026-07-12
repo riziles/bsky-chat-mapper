@@ -148,20 +148,3 @@ One-time setup: place `client-metadata.json` in the public root with the deploye
 
 ---
 
-## Cross-Session Pi Access
-
-Another Pi agent in a different repo can query this project's session context. Sessions are stored in `~/.pi/agent/sessions/<project-dir>/`.
-
-```bash
-# From another agent's working directory:
-cd /home/seanan/Documents/repos/bsky-chat-mapper
-pi --session <session-id> -p "What's the current state of the chat mapper?"
-```
-
-- `-p` sends a non-interactive prompt, returns response to stdout
-- The other Pi instance inherits the full session context (history, plan, decisions)
-
-Useful for:
-- Cross-repo context sharing ("what did we decide about the chat mapper?")
-- Automated check-ins from CI or other tooling
-- Multi-project workflows where decisions in one repo inform another
