@@ -12,6 +12,7 @@
   "dependencies": {
     "@atproto/api": "^0.20.28",
     "@atproto/oauth-client-browser": "^0.4.8",
+    "@ternlight/mini": "^0.1.0",
     "idb": "^8.0.3",
     "preact": "^10.29.3"
   },

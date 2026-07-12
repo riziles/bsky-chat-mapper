@@ -5,4 +5,7 @@ import preact from '@preact/preset-vite'
 export default defineConfig({
   base: '/bsky-chat-mapper/',
   plugins: [preact()],
+  worker: {
+    format: 'es',
+  },
 })

@@ -320,3 +320,137 @@ header h1 {
 .generate-btn:hover {
   background: linear-gradient(135deg, var(--accent-hover), #651fff);
 }
+
+/* ---- Phase Stepper ---- */
+.phase-stepper {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.phase-step {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  opacity: 0.5;
+}
+
+.phase-step.active {
+  opacity: 1;
+  color: var(--accent);
+}
+
+.phase-step.done {
+  opacity: 0.8;
+  color: var(--accent);
+}
+
+.phase-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  font-size: 0.7rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.phase-step.active .phase-dot,
+.phase-step.done .phase-dot {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+.phase-label-mini {
+  display: inline;
+  font-size: 0.75rem;
+}
+
+/* ---- Step buttons ---- */
+.step-next {
+  margin-top: 1.5rem;
+  text-align: center;
+}
+
+.step-btn {
+  background: var(--bg-hover);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-size: 0.95rem;
+  padding: 0.6rem 1.25rem;
+}
+
+.step-btn:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+.phase-desc {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+}
+
+/* ---- Indeterminate progress ---- */
+.progress-bar.indeterminate .progress-fill {
+  width: 30%;
+  animation: indeterminate 1.2s ease-in-out infinite;
+}
+
+@keyframes indeterminate {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}
+
+/* ---- Cluster results ---- */
+.cluster-results {
+  margin-top: 1.5rem;
+}
+
+.cluster-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 1rem 0 1.5rem;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.cluster-item {
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+}
+
+.cluster-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.25rem;
+}
+
+.cluster-label {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.cluster-size {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.cluster-bar {
+  height: 4px;
+  background: var(--accent);
+  border-radius: 2px;
+  opacity: 0.6;
+}
