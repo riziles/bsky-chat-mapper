@@ -2,6 +2,7 @@ import { useRef, useEffect, useState } from "preact/hooks";
 import * as d3Force from "d3-force";
 import * as d3Selection from "d3-selection";
 import * as d3Zoom from "d3-zoom";
+import * as d3Drag from "d3-drag";
 import { embed, cosineSim } from "@ternlight/mini";
 import type { ClusterResult, TopicCluster } from "./cluster.ts";
 
@@ -120,6 +121,24 @@ export function Graph({ result, onBack }: Props) {
     // Tooltips
     node.append("title")
       .text((d: SimNode) => `${d.cluster.label}\n${d.cluster.size} messages`);
+
+    // Drag behavior
+    const drag = d3Drag.drag<SVGGElement, SimNode>()
+      .on("start", (event: d3Drag.D3DragEvent<SVGGElement, SimNode, SimNode>, d: SimNode) => {
+        if (!event.active) simulation.alphaTarget(0.3).restart();
+        d.fx = d.x;
+        d.fy = d.y;
+      })
+      .on("drag", (event: d3Drag.D3DragEvent<SVGGElement, SimNode, SimNode>, d: SimNode) => {
+        d.fx = event.x;
+        d.fy = event.y;
+      })
+      .on("end", (event: d3Drag.D3DragEvent<SVGGElement, SimNode, SimNode>, d: SimNode) => {
+        if (!event.active) simulation.alphaTarget(0);
+        d.fx = null;
+        d.fy = null;
+      });
+    node.call(drag);
 
     // Tick
     simulation.on("tick", () => {
