@@ -75,6 +75,28 @@ export async function clearConvo(convoId: string): Promise<void> {
   await tx.done;
 }
 
+export async function storeEmbeddings(
+  updates: { id: string; embedding: number[] }[],
+): Promise<void> {
+  const db = await getDB();
+  const tx = db.transaction("messages", "readwrite");
+  for (const { id, embedding } of updates) {
+    const existing = await tx.store.get(id);
+    if (existing) {
+      tx.store.put({ ...existing, embedding });
+    }
+  }
+  await tx.done;
+}
+
+export async function getEmbeddedMessages(
+  convoId: string,
+): Promise<StoredMessage[]> {
+  const db = await getDB();
+  const all = await db.getAllFromIndex("messages", "convoId", convoId);
+  return all.filter((m) => m.embedding != null && m.embedding.length > 0);
+}
+
 export async function clearAll(): Promise<void> {
   const db = await getDB();
   await db.clear("messages");
