@@ -166,6 +166,7 @@ export function App() {
             senderHandle: m.senderHandle,
             senderDisplayName: m.senderDisplayName,
             sentAt: m.sentAt,
+            replyTo: m.replyTo ? `${selectedConvo.id}:${m.replyTo}` : undefined,
           })),
         );
       }

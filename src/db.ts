@@ -39,6 +39,7 @@ export interface StoredMessage {
   senderHandle?: string;
   senderDisplayName?: string;
   sentAt: string;
+  replyTo?: string;
   embedding?: number[];
 }
 
