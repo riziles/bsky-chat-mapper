@@ -62,7 +62,7 @@ OAuth was the original plan, but the Bluesky Chat service requires `com.atproto.
 | 3 — Embed + cluster | ⬜ |
 | 4 — Mindmap + search | ⬜ |
 
-See [docs/chat-mapper-plan.md](https://github.com/riziles/bluesky-tricks/blob/main/docs/chat-mapper-plan.md) for the full plan.
+See [docs/chat-mapper-plan.md](docs/chat-mapper-plan.md) for the full plan.
 
 ## Handoff Notes
 
