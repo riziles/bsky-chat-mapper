@@ -10,9 +10,10 @@ import {
 import { storeMessages, storeEmbeddings, getMessagesForConvo } from "./db.ts";
 import type { AtpAgent } from "@atproto/api";
 import type { ClusterResult } from "./cluster.ts";
+import { Graph } from "./graph.tsx";
 import "./app.css";
 
-type AppState = "loading" | "login" | "picker" | "processing";
+type AppState = "loading" | "login" | "picker" | "processing" | "graph";
 
 // Processing phases within the processing view
 type Phase = "fetch" | "embed" | "cluster" | "done";
@@ -425,6 +426,25 @@ export function App() {
   const embedDone = phase === "cluster" || phase === "done";
   const clusterDone = phase === "done" || clusterResult != null;
 
+  // --- Graph view ---
+  if (state === "graph" && clusterResult) {
+    return (
+      <main>
+        <header>
+          <h1>🦋 Bluesky Chat Mapper</h1>
+          <button class="logout-btn" onClick={handleLogout}>
+            Log out
+          </button>
+        </header>
+
+        <Graph
+          result={clusterResult}
+          onBack={() => setState("processing")}
+        />
+      </main>
+    );
+  }
+
   return (
     <main>
       <header>
@@ -632,7 +652,7 @@ export function App() {
 
                 <button
                   class="generate-btn"
-                  onClick={() => alert("Phase 4 coming soon!")}
+                  onClick={() => setState("graph")}
                 >
                   Generate Map
                 </button>

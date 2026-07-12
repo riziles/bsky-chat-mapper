@@ -49,6 +49,11 @@ export async function storeMessages(
   const db = await getDB();
   const tx = db.transaction("messages", "readwrite");
   for (const msg of messages) {
+    // Preserve existing embedding if this message was already stored
+    const existing = await tx.store.get(msg.id);
+    if (existing?.embedding && !msg.embedding) {
+      msg.embedding = existing.embedding;
+    }
     tx.store.put(msg);
   }
   await tx.done;
