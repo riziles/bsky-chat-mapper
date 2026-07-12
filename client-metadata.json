@@ -1,0 +1,13 @@
+{
+  "client_id": "https://riziles.github.io/bsky-chat-mapper/client-metadata.json",
+  "client_name": "Bluesky Chat Mapper",
+  "redirect_uris": [
+    "https://riziles.github.io/bsky-chat-mapper/"
+  ],
+  "scope": "atproto transition:generic rpc:chat.bsky.convo.listConvos?aud=did:web:api.bsky.app#bsky_appview rpc:chat.bsky.convo.getMessages?aud=did:web:api.bsky.app#bsky_appview",
+  "grant_types": ["authorization_code", "refresh_token"],
+  "response_types": ["code"],
+  "token_endpoint_auth_method": "none",
+  "application_type": "web",
+  "dpop_bound_access_tokens": true
+}
