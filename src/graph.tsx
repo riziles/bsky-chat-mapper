@@ -170,7 +170,7 @@ export function Graph({ result, onBack }: Props) {
       setClusterMessages([]);
       return;
     }
-    const cluster = result.clusters.find((c) => c.id === selectedId);
+    const cluster = nodes[selectedId]?.cluster;
     if (!cluster) return;
     setLoadingMessages(true);
     getMessagesByIds(cluster.messageIds).then((msgs) => {
@@ -229,7 +229,7 @@ export function Graph({ result, onBack }: Props) {
   }
 
   const selectedCluster = selectedId != null
-    ? result.clusters.find((c) => c.id === selectedId) ?? null
+    ? (nodes[selectedId]?.cluster ?? null)
     : null;
 
   const totalMessages = result.clusters.reduce((s, c) => s + c.size, 0);
