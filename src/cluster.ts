@@ -313,62 +313,86 @@ export function clusterMessages(
     }
   }
 
-  // Label clusters
-  const result: TopicCluster[] = clusters.map((c, idx) => ({
-    id: idx,
-    label: topBigramLabel(c.ids, embedded),
-    messageIds: c.ids,
-    size: c.ids.length,
-    centroid: Array.from(c.centroid),
-  }));
+  // Label clusters using TF-IDF distinctive terms
+  const result: TopicCluster[] = tfidfLabels(clusters, embedded);
 
   result.sort((a, b) => b.size - a.size);
 
   return { clusters: result, similarities, replyChains };
 }
 
-function topBigramLabel(ids: string[], messages: StoredMessage[]): string {
-  const idSet = new Set(ids);
-  const texts = messages
-    .filter((m) => idSet.has(m.id))
-    .map((m) => m.text);
-
-  const bigramCounts = new Map<string, number>();
+function tfidfLabels(
+  clusters: { ids: string[]; centroid: Float32Array }[],
+  messages: StoredMessage[],
+): TopicCluster[] {
+  const msgMap = new Map(messages.map((m) => [m.id, m]));
   const stopWords = new Set([
     "the", "and", "for", "that", "this", "with", "you", "are", "not", "was",
     "but", "have", "from", "they", "all", "can", "had", "has", "been", "were",
     "will", "would", "what", "when", "your", "how", "said", "there", "their",
     "its", "just", "like", "more", "some", "than", "then", "very", "also",
-    "into", "only", "other", "over", "such", "than", "that", "them", "these",
-    "which", "who", "about", "after", "could", "should", "because", "i'm",
-    "it's", "don't", "i", "me", "my", "we", "our", "he", "she", "him", "her",
-    "his", "do", "does", "did", "is", "am", "be", "or", "if", "to", "of",
-    "in", "on", "at", "a", "an", "by", "up", "so", "no", "out", "now", "one",
-    "get", "got", "as", "it", "de", "la", "el", "en", "un", "que", "los",
+    "into", "only", "other", "over", "such", "them", "these", "which", "who",
+    "about", "after", "could", "should", "because", "i'm", "it's", "don't",
+    "i", "me", "my", "we", "our", "he", "she", "him", "her", "his",
+    "do", "does", "did", "is", "am", "be", "or", "if", "to", "of",
+    "in", "on", "at", "a", "an", "by", "up", "so", "no", "out", "now",
+    "one", "get", "got", "as", "it", "de", "la", "el", "en", "un", "que",
+    "los", "para", "con", "por", "del", "se", "pero", "una",
   ]);
 
-  for (const text of texts) {
-    const words = text
-      .toLowerCase()
-      .replace(/[^a-záéíóúñü0-9\s]/g, "")
-      .split(/\s+/)
-      .filter((w) => w.length >= 2);
-    for (let i = 0; i < words.length - 1; i++) {
-      const bigram = `${words[i]} ${words[i + 1]}`;
-      if (!stopWords.has(words[i]) || !stopWords.has(words[i + 1])) {
-        bigramCounts.set(bigram, (bigramCounts.get(bigram) ?? 0) + 1);
+  // Tokenize each cluster into unigram frequencies
+  const termFreqs: Map<string, number>[] = clusters.map((c) => {
+    const freq = new Map<string, number>();
+    for (const id of c.ids) {
+      const msg = msgMap.get(id);
+      if (!msg) continue;
+      const words = msg.text
+        .toLowerCase()
+        .replace(/[^a-záéíóúñü0-9\s]/g, "")
+        .split(/\s+/)
+        .filter((w) => w.length >= 3 && !stopWords.has(w));
+      for (const w of words) {
+        freq.set(w, (freq.get(w) ?? 0) + 1);
       }
     }
-  }
+    return freq;
+  });
 
-  let topBigram = "unnamed cluster";
-  let topCount = 0;
-  for (const [bg, count] of bigramCounts) {
-    if (count > topCount && bg.length >= 5) {
-      topBigram = bg;
-      topCount = count;
+  // Compute IDF: log(N / df) where df = number of clusters containing term
+  const docFreq = new Map<string, number>();
+  for (const tf of termFreqs) {
+    for (const term of tf.keys()) {
+      docFreq.set(term, (docFreq.get(term) ?? 0) + 1);
     }
   }
 
-  return topBigram;
+  const N = clusters.length;
+  const idf = new Map<string, number>();
+  for (const [term, df] of docFreq) {
+    idf.set(term, Math.log((N + 1) / (df + 1)) + 1);
+  }
+
+  // Score terms per cluster: TF * IDF
+  return clusters.map((c, idx) => {
+    const tf = termFreqs[idx];
+    const scored: { term: string; score: number }[] = [];
+    for (const [term, count] of tf) {
+      const idfVal = idf.get(term) ?? 0;
+      scored.push({ term, score: count * idfVal });
+    }
+    scored.sort((a, b) => b.score - a.score);
+
+    // Pick top 2 distinctive terms as label
+    const label = scored.length > 0
+      ? scored.slice(0, 2).map((s) => s.term).join(" / ")
+      : "miscellaneous";
+
+    return {
+      id: idx,
+      label,
+      messageIds: c.ids,
+      size: c.ids.length,
+      centroid: Array.from(c.centroid),
+    };
+  });
 }
