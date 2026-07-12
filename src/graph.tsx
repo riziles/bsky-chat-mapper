@@ -59,7 +59,7 @@ export function Graph({ result, onBack }: Props) {
     const svg = d3Selection.select(svgRef.current);
     const container = svgRef.current.parentElement!;
     const width = container.clientWidth;
-    const height = Math.max(400, window.innerHeight * 0.55);
+    const height = Math.max(500, window.innerHeight * 0.65);
 
     svg.attr("viewBox", `0 0 ${width} ${height}`);
     svg.attr("preserveAspectRatio", "xMidYMid meet");
@@ -77,7 +77,7 @@ export function Graph({ result, onBack }: Props) {
     svg.call(zoomBehavior);
 
     // Simulation
-    const chargeForce = d3Force.forceManyBody().strength(-200);
+    const chargeForce = d3Force.forceManyBody().strength(-300);
     const centerForce = d3Force.forceCenter(width / 2, height / 2);
 
     const simulation = d3Force.forceSimulation<SimNode>(nodes)
@@ -164,7 +164,7 @@ export function Graph({ result, onBack }: Props) {
     // Respond to window resize
     const resizeObserver = new ResizeObserver(() => {
       const w = container.clientWidth;
-      const h = Math.max(400, window.innerHeight * 0.55);
+      const h = Math.max(500, window.innerHeight * 0.65);
       svg.attr("viewBox", `0 0 ${w} ${h}`);
       centerForce.x(w / 2).y(h / 2);
       simulation.alpha(0.3).restart();
