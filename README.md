@@ -61,7 +61,9 @@ OAuth was the original plan, but the Bluesky Chat service requires `com.atproto.
 | 2 — Pull + store | ⬜ Next |
 | 3 — Embed + cluster | ✅ Done |
 | 3.5 — Temporal + reply chains | ✅ Done |
-| 4 — Mindmap + search | ⬜ Next |
+| 4 — Mindmap + search | ✅ Done |
+| 5 — Polish & QoL | ⬜ Next |
+| 6 — Deeper analysis | ⬜ |
 
 See [docs/chat-mapper-plan.md](docs/chat-mapper-plan.md) for the full plan.
 
