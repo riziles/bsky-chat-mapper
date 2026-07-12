@@ -57,8 +57,12 @@ export function Graph({ result, onBack }: Props) {
     if (!svgRef.current || nodes.length === 0) return;
 
     const svg = d3Selection.select(svgRef.current);
-    const width = svgRef.current.clientWidth || 800;
-    const height = 600;
+    const container = svgRef.current.parentElement!;
+    const width = container.clientWidth;
+    const height = Math.max(400, window.innerHeight * 0.55);
+
+    svg.attr("viewBox", `0 0 ${width} ${height}`);
+    svg.attr("preserveAspectRatio", "xMidYMid meet");
 
     svg.selectAll("*").remove();
 
@@ -73,13 +77,16 @@ export function Graph({ result, onBack }: Props) {
     svg.call(zoomBehavior);
 
     // Simulation
+    const chargeForce = d3Force.forceManyBody().strength(-200);
+    const centerForce = d3Force.forceCenter(width / 2, height / 2);
+
     const simulation = d3Force.forceSimulation<SimNode>(nodes)
       .force("link", d3Force.forceLink<SimNode, SimLink>(links)
         .id((d: SimNode) => d.id)
         .distance((d: d3Force.SimulationLinkDatum<SimNode>) =>
           100 - (d as SimLink).sim * 60))
-      .force("charge", d3Force.forceManyBody().strength(-200))
-      .force("center", d3Force.forceCenter(width / 2, height / 2))
+      .force("charge", chargeForce)
+      .force("center", centerForce)
       .force("collision", d3Force.forceCollide<SimNode>().radius(
         (d: SimNode) => radiusScale(d.cluster.size) + 4));
 
@@ -154,8 +161,19 @@ export function Graph({ result, onBack }: Props) {
       node.attr("transform", (d: SimNode) => `translate(${d.x},${d.y})`);
     });
 
+    // Respond to window resize
+    const resizeObserver = new ResizeObserver(() => {
+      const w = container.clientWidth;
+      const h = Math.max(400, window.innerHeight * 0.55);
+      svg.attr("viewBox", `0 0 ${w} ${h}`);
+      centerForce.x(w / 2).y(h / 2);
+      simulation.alpha(0.3).restart();
+    });
+    resizeObserver.observe(container);
+
     return () => {
       simulation.stop();
+      resizeObserver.disconnect();
     };
   }, [nodes, links, highlightedIds]);
 
@@ -267,7 +285,7 @@ export function Graph({ result, onBack }: Props) {
 
       {/* Graph + sidebar */}
       <div class="graph-layout">
-        <svg ref={svgRef} class="graph-svg" viewBox="0 0 800 600" />
+        <svg ref={svgRef} class="graph-svg" />
 
         {/* Sidebar */}
         {selectedCluster && (
