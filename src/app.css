@@ -545,6 +545,43 @@ header h1 {
 .sidebar-desc {
   font-size: 0.8rem;
   color: var(--text-muted);
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+
+.sidebar-loading {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.sidebar-messages {
+  list-style: none;
+  padding: 0;
+  margin: 0.75rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.sidebar-msg {
+  font-size: 0.75rem;
+  background: var(--bg-hover);
+  border-radius: 4px;
+  padding: 0.5rem;
+}
+
+.sidebar-msg-sender {
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 0.2rem;
+}
+
+.sidebar-msg-text {
+  color: var(--text);
+  line-height: 1.35;
+  word-break: break-word;
 }
 
 .graph-footer {

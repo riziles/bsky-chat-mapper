@@ -103,6 +103,42 @@ export async function getEmbeddedMessages(
   return all.filter((m) => m.embedding != null && m.embedding.length > 0);
 }
 
+export async function getMessagesByIds(
+  ids: string[],
+): Promise<StoredMessage[]> {
+  const db = await getDB();
+  const tx = db.transaction("messages", "readonly");
+  const results: StoredMessage[] = [];
+  for (const id of ids) {
+    const msg = await tx.store.get(id);
+    if (msg) results.push(msg);
+  }
+  await tx.done;
+  return results;
+}
+
+/** Return the most recent message timestamp for a convo, or null. */
+export async function getLatestTimestamp(
+  convoId: string,
+): Promise<string | null> {
+  const db = await getDB();
+  const all = await db.getAllFromIndex("messages", "convoId", convoId);
+  if (all.length === 0) return null;
+  return all.reduce((a, b) => (a.sentAt > b.sentAt ? a : b)).sentAt;
+}
+
+/** Check if any of the given message IDs already exist in the store. */
+export async function hasAnyOf(ids: string[]): Promise<boolean> {
+  const db = await getDB();
+  const tx = db.transaction("messages", "readonly");
+  for (const id of ids) {
+    const existing = await tx.store.get(id);
+    if (existing) return true;
+  }
+  await tx.done;
+  return false;
+}
+
 export async function clearAll(): Promise<void> {
   const db = await getDB();
   await db.clear("messages");
