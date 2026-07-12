@@ -61,13 +61,15 @@ No backend. No API keys. No server.
 - Summary view with message count, date range, Generate Map stub
 - Tested: 2,858 messages from a 50-member group in ~10 seconds
 
-### Phase 3 — Embed + cluster
+### Phase 3 — Embed + cluster ✅
 
-- Web Worker loads Ternlight WASM once (`@ternlight/mini`: 5.5MB, <2ms/embedding)
-- Streams messages through embedder with progress
+- Web Worker loads Ternlight WASM dynamically (`@ternlight/mini`: 5MB gzipped)
+- Batch embeds with progress (2,751 messages in ~20s)
 - Stores vectors back into IndexedDB
-- Hierarchical clustering: groups similar messages into topic clusters
-- Labels clusters by most frequent n-grams
+- Flat greedy clustering with cosine similarity threshold (0.65)
+- Labels clusters by most frequent bigrams
+- 3-step UI stepper: Pull → Embed → Cluster
+- Tested: 40 topic clusters from 2,751 messages
 
 ### Phase 4 — Mindmap + search
 
