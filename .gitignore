@@ -1,0 +1,27 @@
+
+.bsky-session.json
+dist
+dist-ssr
+.DS_Store
+# Editor directories and files
+.env
+.idea
+lerna-debug.log*
+*.local
+*.log
+logs
+# Logs
+*.njsproj
+node_modules
+npm-debug.log*
+*.ntvs*
+.playwright-cli/
+pnpm-debug.log*
+pnpm-workspace.yaml
+*.sln
+*.suo
+*.sw?
+.vscode/*
+!.vscode/extensions.json
+yarn-debug.log*
+yarn-error.log*

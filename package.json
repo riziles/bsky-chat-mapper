@@ -1,0 +1,25 @@
+{
+  "name": "bsky-chat-mapper",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "deploy": "pnpm build && gh-pages -d dist"
+  },
+  "dependencies": {
+    "@atproto/api": "^0.20.28",
+    "@atproto/oauth-client-browser": "^0.4.8",
+    "idb": "^8.0.3",
+    "preact": "^10.29.3"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "^2.10.5",
+    "@types/node": "^24.13.2",
+    "gh-pages": "^6.3.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.1.1"
+  }
+}
