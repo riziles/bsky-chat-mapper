@@ -87,6 +87,7 @@ export async function fetchMessages(
     before?: Date;
     onProgress: (p: FetchProgress) => void;
     signal?: AbortSignal;
+    stopWhen?: (ids: string[]) => boolean;
   },
 ): Promise<MessageView[]> {
   const messages: MessageView[] = [];
@@ -106,6 +107,22 @@ export async function fetchMessages(
     const profileMap = new Map<string, { handle?: string; displayName?: string }>();
     for (const p of res.data.relatedProfiles ?? []) {
       profileMap.set(p.did, { handle: p.handle, displayName: p.displayName });
+    }
+
+    // Batch-level early stop: check if any message in this batch is already stored
+    const batchIds = (res.data.messages as Array<{ $type?: string; id?: string }>)
+      .filter((m) => m.$type === "chat.bsky.convo.defs#messageView")
+      .map((m) => m.id!)
+      .filter(Boolean);
+    if (batchIds.length > 0 && opts.stopWhen?.(batchIds)) {
+      opts.onProgress({
+        fetched: messages.length,
+        oldestDate: messages.length > 0
+          ? messages[messages.length - 1].sentAt
+          : null,
+        done: true,
+      });
+      return messages;
     }
 
     for (const m of res.data.messages) {

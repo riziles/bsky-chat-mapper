@@ -5,6 +5,7 @@ import * as d3Zoom from "d3-zoom";
 import * as d3Drag from "d3-drag";
 import { embed, cosineSim } from "@ternlight/mini";
 import type { ClusterResult, TopicCluster } from "./cluster.ts";
+import { getMessagesByIds, type StoredMessage } from "./db.ts";
 
 interface Props {
   result: ClusterResult;
@@ -29,6 +30,8 @@ interface SimLink extends d3Force.SimulationLinkDatum<SimNode> {
 export function Graph({ result, onBack }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [clusterMessages, setClusterMessages] = useState<StoredMessage[]>([]);
+  const [loadingMessages, setLoadingMessages] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [highlightedIds, setHighlightedIds] = useState<Set<number>>(new Set());
   const [searching, setSearching] = useState(false);
@@ -161,6 +164,33 @@ export function Graph({ result, onBack }: Props) {
     simulationRef.current?.alpha(0.3).restart();
   }, [highlightedIds]);
 
+  // Fetch cluster messages when selection changes
+  useEffect(() => {
+    if (selectedId == null) {
+      setClusterMessages([]);
+      return;
+    }
+    const cluster = result.clusters.find((c) => c.id === selectedId);
+    if (!cluster) return;
+    setLoadingMessages(true);
+    getMessagesByIds(cluster.messageIds).then((msgs) => {
+      // Find top 5 messages closest to centroid (representative samples)
+      const centroid = new Float32Array(cluster.centroid);
+      const ranked = msgs
+        .filter((m) => m.embedding)
+        .map((m) => ({
+          msg: m,
+          sim: cosineSim(new Float32Array(m.embedding!), centroid),
+        }))
+        .sort((a, b) => b.sim - a.sim);
+      setClusterMessages(ranked.slice(0, 5).map((r) => r.msg));
+    }).catch(() => {
+      // Ignore errors
+    }).finally(() => {
+      setLoadingMessages(false);
+    });
+  }, [selectedId, result.clusters]);
+
   // Search
   async function handleSearch() {
     if (!searchQuery.trim()) {
@@ -247,6 +277,19 @@ export function Graph({ result, onBack }: Props) {
               {selectedCluster.size} messages ·{" "}
               {Math.round((selectedCluster.size / totalMessages) * 100)}%
             </p>
+            {loadingMessages && (
+              <p class="sidebar-loading">Loading messages…</p>
+            )}
+            {!loadingMessages && clusterMessages.length > 0 && (
+              <ul class="sidebar-messages">
+                {clusterMessages.map((m) => (
+                  <li key={m.id} class="sidebar-msg">
+                    <div class="sidebar-msg-sender">{m.senderDisplayName || m.senderHandle || "unknown"}</div>
+                    <div class="sidebar-msg-text">{m.text.slice(0, 140)}{m.text.length > 140 ? "…" : ""}</div>
+                  </li>
+                ))}
+              </ul>
+            )}
             <p class="sidebar-desc">
               Click another cluster to compare, or click this one again to close.
             </p>

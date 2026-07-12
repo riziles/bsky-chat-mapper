@@ -7,7 +7,7 @@ import {
   type FetchProgress,
   type MessageView,
 } from "./api.ts";
-import { storeMessages, storeEmbeddings, getMessagesForConvo } from "./db.ts";
+import { storeMessages, storeEmbeddings, getMessagesForConvo, getLatestTimestamp, type StoredMessage } from "./db.ts";
 import type { AtpAgent } from "@atproto/api";
 import type { ClusterResult } from "./cluster.ts";
 import { Graph } from "./graph.tsx";
@@ -68,6 +68,9 @@ export function App() {
   // Cluster state
   const [clustering, setClustering] = useState(false);
   const [clusterResult, setClusterResult] = useState<ClusterResult | null>(null);
+  const [isIncremental, setIsIncremental] = useState(false);
+  const [existingCount, setExistingCount] = useState(0);
+  const autoStartedRef = useRef<Set<string>>(new Set());
 
   // Try to restore a session if one exists
   useEffect(() => {
@@ -81,6 +84,19 @@ export function App() {
       }
     });
   }, []);
+
+  // Auto-advance between phases when steps complete
+  useEffect(() => {
+    if (phase === "fetch" && fetchProgress?.done && fetchedMsgs.length > 0) {
+      setPhase("embed");
+    }
+  }, [phase, fetchProgress?.done, fetchedMsgs.length]);
+
+  useEffect(() => {
+    if (phase === "embed" && embedProgress && !embedding) {
+      setPhase("cluster");
+    }
+  }, [phase, embedProgress, embedding]);
 
   async function loadConvos(agent: AtpAgent) {
     setLoadingConvos(true);
@@ -130,6 +146,9 @@ export function App() {
     setEmbedProgress(null);
     setClustering(false);
     setClusterResult(null);
+    setIsIncremental(false);
+    setExistingCount(0);
+    autoStartedRef.current = new Set();
     setError(null);
     terminateWorker();
     setState("processing");
@@ -148,21 +167,52 @@ export function App() {
     setFetching(true);
     setError(null);
     setFetchProgress({ fetched: 0, oldestDate: null, done: false });
-    setFetchedMsgs([]);
 
     const controller = new AbortController();
     setFetchAbort(controller);
 
     try {
+      // Check for existing messages (incremental pull)
+      const latest = await getLatestTimestamp(selectedConvo.id);
+      const existing = latest != null;
+      setIsIncremental(existing);
+      if (existing) {
+        const stored = await getMessagesForConvo(selectedConvo.id);
+        setExistingCount(stored.length);
+        setFetchedMsgs(stored.map(storedMsgToView));
+      } else {
+        setFetchedMsgs([]);
+      }
+
+      // Build the set of already-stored message IDs for early stopping
+      const storedIds = existing
+        ? new Set(
+            (await getMessagesForConvo(selectedConvo.id)).map((m) => {
+              const parts = m.id.split(":");
+              return parts[parts.length - 1];
+            }),
+          )
+        : new Set<string>();
+
+      const before = timeRangeToDate(timeRange, customDays);
+
       const msgs = await fetchMessages(a, selectedConvo.id, {
-        before: timeRangeToDate(timeRange, customDays),
+        before,
         signal: controller.signal,
         onProgress(p) {
           setFetchProgress(p.done ? p : { ...p });
         },
+        stopWhen(ids) {
+          // Stop early if we've reached messages we already have
+          return ids.some((id) => storedIds.has(id));
+        },
       });
 
-      setFetchedMsgs(msgs);
+      if (existing) {
+        setFetchedMsgs((prev) => [...prev, ...msgs]);
+      } else {
+        setFetchedMsgs(msgs);
+      }
 
       if (msgs.length > 0) {
         await storeMessages(
@@ -185,6 +235,19 @@ export function App() {
       setFetching(false);
       setFetchAbort(null);
     }
+  }
+
+  function storedMsgToView(m: StoredMessage): MessageView {
+    const parts = m.id.split(":");
+    return {
+      id: parts[parts.length - 1],
+      rev: "",
+      text: m.text,
+      senderDid: m.senderDid,
+      senderHandle: m.senderHandle ?? "",
+      sentAt: m.sentAt,
+      replyTo: m.replyTo,
+    };
   }
 
   function cancelFetch() {
@@ -469,6 +532,17 @@ export function App() {
         <h2>{groupName(selectedConvo!)}</h2>
         <p class="fetch-meta">👥 {memberCount(selectedConvo!)} members</p>
 
+        {/* Auto-start the current phase (runs once per phase) */}
+        {(() => {
+          if (!autoStartedRef.current.has(phase)) {
+            autoStartedRef.current.add(phase);
+            if (phase === "fetch") setTimeout(startFetch, 50);
+            else if (phase === "embed") setTimeout(startEmbedding, 50);
+            else if (phase === "cluster") setTimeout(startClustering, 50);
+          }
+          return null;
+        })()}
+
         {/* Phase stepper */}
         <div class="phase-stepper">
           {(["fetch", "embed", "cluster"] as Phase[]).map((p) => {
@@ -526,7 +600,7 @@ export function App() {
                 </label>
               )}
 
-              {!fetching && (
+              {!fetching && !fetchProgress && (
                 <button class="fetch-btn" onClick={startFetch}>
                   Fetch messages
                 </button>
@@ -552,7 +626,9 @@ export function App() {
                 </div>
                 <p class="progress-text">
                   {fetchProgress.done ? "✅" : "📥"}{" "}
-                  {fetchProgress.fetched} messages
+                  {fetchProgress.fetched} new
+                  {isIncremental && ` (+${existingCount} existing)`}{" "}
+                  messages
                   {fetchProgress.oldestDate && (
                     <span>
                       {" "}
@@ -567,17 +643,6 @@ export function App() {
             {fetchDone && fetchedMsgs.length === 0 && (
               <p class="empty">No messages in this time range.</p>
             )}
-
-            {fetchDone && (
-              <div class="step-next">
-                <button
-                  class="step-btn"
-                  onClick={() => setPhase("embed")}
-                >
-                  Next: Generate Embeddings →
-                </button>
-              </div>
-            )}
           </>
         )}
 
@@ -588,12 +653,6 @@ export function App() {
               Generating semantic embeddings for {fetchedMsgs.length} messages
               using on-device AI (runs entirely in your browser).
             </p>
-
-            {!embedding && !embedDone && (
-              <button class="step-btn" onClick={startEmbedding}>
-                Generate Embeddings
-              </button>
-            )}
 
             {embedProgress && (
               <div class="progress-section">
@@ -611,17 +670,6 @@ export function App() {
                 </p>
               </div>
             )}
-
-            {!embedding && embedDone && (
-              <div class="step-next">
-                <button
-                  class="step-btn"
-                  onClick={() => setPhase("cluster")}
-                >
-                  Next: Cluster Messages →
-                </button>
-              </div>
-            )}
           </>
         )}
 
@@ -631,12 +679,6 @@ export function App() {
             <p class="phase-desc">
               Group similar messages into topic clusters.
             </p>
-
-            {!clustering && !clusterResult && (
-              <button class="step-btn" onClick={startClustering}>
-                Run Clustering
-              </button>
-            )}
 
             {clustering && (
               <div class="progress-section">
