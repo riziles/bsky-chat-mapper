@@ -10,6 +10,7 @@ import { getMessagesByIds, getEmbeddedMessages, type StoredMessage } from "./db.
 
 interface Props {
   result: ClusterResult;
+  convoId: string;
   onBack: () => void;
 }
 
@@ -28,7 +29,7 @@ interface SimLink extends d3Force.SimulationLinkDatum<SimNode> {
   sim: number;
 }
 
-export function Graph({ result, onBack }: Props) {
+export function Graph({ result, convoId, onBack }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [clusterMessages, setClusterMessages] = useState<StoredMessage[]>([]);
@@ -40,13 +41,16 @@ export function Graph({ result, onBack }: Props) {
   const [fuzzyLevel, setFuzzyLevel] = useState(0.4);
   const simulationRef = useRef<d3Force.Simulation<SimNode, SimLink> | null>(null);
   const miniSearchRef = useRef<MiniSearch | null>(null);
+  const msgCacheRef = useRef<Map<string, StoredMessage>>(new Map());
+  const [searchResults, setSearchResults] = useState<{msg: StoredMessage; score: number; matchTerms?: string[]}[]>([]);
   const miniReady = useRef(false);
 
   // Build MiniSearch index for fuzzy cluster search
   useEffect(() => {
     if (miniReady.current) return;
     miniReady.current = true;
-    getEmbeddedMessages(result.clusters[0]?.messageIds[0]?.split(":")[0] ?? "").then((msgs) => {
+    getEmbeddedMessages(convoId).then((msgs) => {
+      for (const m of msgs) msgCacheRef.current.set(m.id, m);
       const mini = new MiniSearch({
         fields: ["text", "senderDisplayName", "senderHandle"],
         storeFields: ["id"],
@@ -267,6 +271,7 @@ export function Graph({ result, onBack }: Props) {
       return;
     }
     setSearching(true);
+    let msgResults: {msg: StoredMessage; score: number; matchTerms?: string[]}[] = [];
     try {
       if (searchMode === "fuzzy") {
         const mini = miniSearchRef.current;
@@ -284,6 +289,11 @@ export function Graph({ result, onBack }: Props) {
           if (cid != null) matchedClusters.add(cid);
         }
         setHighlightedIds(matchedClusters);
+        msgResults = hits.slice(0, 20).map((h) => ({
+          msg: msgCacheRef.current.get(h.id)!,
+          score: h.score,
+          matchTerms: Object.keys(h.match).filter((k) => h.match[k].length > 0),
+        })).filter((r) => r.msg);
       } else {
         const queryVec = embed(searchQuery.trim());
         const scores = nodes.map((n, i) => ({
@@ -294,6 +304,7 @@ export function Graph({ result, onBack }: Props) {
         const highlighted = new Set(scores.slice(0, 5).map((s) => s.i));
         setHighlightedIds(highlighted);
       }
+      setSearchResults(msgResults);
     } catch {
       // Ignore search errors
     } finally {
@@ -378,6 +389,7 @@ export function Graph({ result, onBack }: Props) {
             onClick={() => {
               setSearchQuery("");
               setHighlightedIds(new Set());
+              setSearchResults([]);
             }}
           >
             Clear
@@ -413,6 +425,28 @@ export function Graph({ result, onBack }: Props) {
             <p class="sidebar-desc">
               Click another cluster to compare, or click this one again to close.
             </p>
+          </div>
+        )}
+
+        {/* Search results panel (when no cluster selected) */}
+        {!selectedCluster && searchResults.length > 0 && (
+          <div class="graph-sidebar">
+            <h3>🔍 Search results</h3>
+            <p class="sidebar-meta">{searchResults.length} matches</p>
+            <ul class="sidebar-messages">
+              {searchResults.map((r) => (
+                <li key={r.msg.id} class="sidebar-msg">
+                  <div class="sidebar-msg-sender">
+                    {r.msg.senderDisplayName || r.msg.senderHandle || "unknown"}
+                    {r.matchTerms && r.matchTerms.length > 0 && (
+                      <span class="match-terms"> — {r.matchTerms.slice(0, 2).join(", ")}</span>
+                    )}
+                  </div>
+                  <div class="sidebar-msg-text">{r.msg.text.slice(0, 140)}{r.msg.text.length > 140 ? "…" : ""}</div>
+                  <div class="sidebar-msg-time">{new Date(r.msg.sentAt).toLocaleString()}</div>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
       </div>

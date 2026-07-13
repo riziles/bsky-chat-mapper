@@ -513,6 +513,7 @@ export function App() {
 
         <Graph
           result={clusterResult}
+          convoId={selectedConvo!.id}
           onBack={() => setState("processing")}
         />
       </main>
