@@ -39,7 +39,7 @@ export function Graph({ result, convoId, onBack }: Props) {
   const [highlightedIds, setHighlightedIds] = useState<Set<number>>(new Set());
   const [searching, setSearching] = useState(false);
   const [searchMode, setSearchMode] = useState<"semantic" | "fuzzy">("semantic");
-  const [fuzzyLevel, setFuzzyLevel] = useState(0.4);
+  const [fuzzyLevel, setFuzzyLevel] = useState(0.2);
   const simulationRef = useRef<d3Force.Simulation<SimNode, SimLink> | null>(null);
   const miniSearchRef = useRef<MiniSearch | null>(null);
   const msgCacheRef = useRef<Map<string, StoredMessage>>(new Map());
@@ -377,12 +377,12 @@ export function Graph({ result, convoId, onBack }: Props) {
           </label>
           {searchMode === "fuzzy" && (
             <label class="fuzzy-slider">
-              <span>Fuzziness: {fuzzyLevel.toFixed(1)}</span>
+              <span>Fuzziness: {fuzzyLevel.toFixed(2)}</span>
               <input
                 type="range"
                 min="0"
-                max="1"
-                step="0.1"
+                max="0.4"
+                step="0.05"
                 value={fuzzyLevel}
                 onInput={(e) => setFuzzyLevel(Number(e.currentTarget.value))}
               />
