@@ -22,7 +22,7 @@ export function MessageSearch({ convoId }: Props) {
   const [searching, setSearching] = useState(false);
   const [searched, setSearched] = useState(false);
   const [mode, setMode] = useState<SearchMode>("fuzzy");
-  const [fuzzyLevel, setFuzzyLevel] = useState(0.4);
+  const [fuzzyLevel, setFuzzyLevel] = useState(0.2);
 
   const miniSearchRef = useRef<MiniSearch | null>(null);
   const msgCacheRef = useRef<Map<string, StoredMessage>>(new Map());
@@ -43,7 +43,7 @@ export function MessageSearch({ convoId }: Props) {
         storeFields: ["id"],
         searchOptions: {
           boost: { text: 2, senderDisplayName: 1 },
-          fuzzy: fuzzyLevel,
+          fuzzy: 0.2,
           prefix: true,
         },
       });
@@ -123,12 +123,12 @@ export function MessageSearch({ convoId }: Props) {
         </label>
         {mode === "fuzzy" && (
           <label class="fuzzy-slider">
-            <span>Fuzziness: {fuzzyLevel.toFixed(1)}</span>
+            <span>Fuzziness: {fuzzyLevel.toFixed(2)}</span>
             <input
               type="range"
               min="0"
-              max="1"
-              step="0.1"
+              max="0.4"
+              step="0.05"
               value={fuzzyLevel}
               onInput={(e) => setFuzzyLevel(Number(e.currentTarget.value))}
             />
