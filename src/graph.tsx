@@ -4,11 +4,13 @@ import * as d3Selection from "d3-selection";
 import * as d3Zoom from "d3-zoom";
 import * as d3Drag from "d3-drag";
 import { embed, cosineSim } from "@ternlight/mini";
+import MiniSearch from "minisearch";
 import type { ClusterResult, TopicCluster } from "./cluster.ts";
-import { getMessagesByIds, type StoredMessage } from "./db.ts";
+import { getMessagesByIds, getEmbeddedMessages, type StoredMessage } from "./db.ts";
 
 interface Props {
   result: ClusterResult;
+  convoId: string;
   onBack: () => void;
 }
 
@@ -27,7 +29,7 @@ interface SimLink extends d3Force.SimulationLinkDatum<SimNode> {
   sim: number;
 }
 
-export function Graph({ result, onBack }: Props) {
+export function Graph({ result, convoId, onBack }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [clusterMessages, setClusterMessages] = useState<StoredMessage[]>([]);
@@ -35,7 +37,26 @@ export function Graph({ result, onBack }: Props) {
   const [searchQuery, setSearchQuery] = useState("");
   const [highlightedIds, setHighlightedIds] = useState<Set<number>>(new Set());
   const [searching, setSearching] = useState(false);
+  const [searchMode, setSearchMode] = useState<"semantic" | "fuzzy">("semantic");
+  const [fuzzyLevel, setFuzzyLevel] = useState(0.4);
+  const [searchResults, setSearchResults] = useState<{msg: StoredMessage; score: number; matchTerms?: string[]}[]>([]);
   const simulationRef = useRef<d3Force.Simulation<SimNode, SimLink> | null>(null);
+  const miniSearchRef = useRef<MiniSearch | null>(null);
+  const msgCacheRef = useRef<Map<string, StoredMessage>>(new Map());
+
+  // Build MiniSearch index for fuzzy cluster search
+  useEffect(() => {
+    getEmbeddedMessages(convoId).then((msgs) => {
+      for (const m of msgs) msgCacheRef.current.set(m.id, m);
+      const mini = new MiniSearch({
+        fields: ["text", "senderDisplayName", "senderHandle"],
+        storeFields: ["id"],
+        searchOptions: { boost: { text: 2 }, fuzzy: 0.4, prefix: true },
+      });
+      mini.addAll(msgs.map((m) => ({ id: m.id, text: m.text, senderDisplayName: m.senderDisplayName ?? "", senderHandle: m.senderHandle ?? "" })));
+      miniSearchRef.current = mini;
+    }).catch(() => {});
+  }, [convoId]);
 
   // Build graph data
   const nodes: SimNode[] = result.clusters.map((c, i) => ({
@@ -248,14 +269,40 @@ export function Graph({ result, onBack }: Props) {
     }
     setSearching(true);
     try {
-      const queryVec = embed(searchQuery.trim());
-      const scores = nodes.map((n, i) => ({
-        i,
-        sim: cosineSim(queryVec, new Float32Array(n.cluster.centroid)),
-      }));
-      scores.sort((a, b) => b.sim - a.sim);
-      const highlighted = new Set(scores.slice(0, 5).map((s) => s.i));
-      setHighlightedIds(highlighted);
+      let msgResults: {msg: StoredMessage; score: number; matchTerms?: string[]}[] = [];
+
+      if (searchMode === "fuzzy") {
+        const mini = miniSearchRef.current;
+        if (!mini) return;
+        const hits = mini.search(searchQuery.trim(), { fuzzy: fuzzyLevel, prefix: true });
+        const clusterByMsg = new Map<string, number>();
+        for (const n of nodes) {
+          for (const mid of n.cluster.messageIds) {
+            clusterByMsg.set(mid, n.id);
+          }
+        }
+        const matchedClusters = new Set<number>();
+        for (const h of hits) {
+          const cid = clusterByMsg.get(h.id);
+          if (cid != null) matchedClusters.add(cid);
+        }
+        setHighlightedIds(matchedClusters);
+        msgResults = hits.slice(0, 20).map((h) => ({
+          msg: msgCacheRef.current.get(h.id)!,
+          score: h.score,
+          matchTerms: Object.keys(h.match).filter((k) => h.match[k].length > 0),
+        })).filter((r) => r.msg);
+      } else {
+        const queryVec = embed(searchQuery.trim());
+        const scores = nodes.map((n, i) => ({
+          i,
+          sim: cosineSim(queryVec, new Float32Array(n.cluster.centroid)),
+        }));
+        scores.sort((a, b) => b.sim - a.sim);
+        const highlighted = new Set(scores.slice(0, 5).map((s) => s.i));
+        setHighlightedIds(highlighted);
+      }
+      setSearchResults(msgResults);
     } catch {
       // Ignore search errors
     } finally {
@@ -291,9 +338,42 @@ export function Graph({ result, onBack }: Props) {
 
       {/* Search bar */}
       <div class="graph-search">
+        <div class="search-mode-bar">
+          <label class="search-mode-label">
+            <input
+              type="radio"
+              name="graph-search-mode"
+              checked={searchMode === "semantic"}
+              onChange={() => setSearchMode("semantic")}
+            />
+            Semantic
+          </label>
+          <label class="search-mode-label">
+            <input
+              type="radio"
+              name="graph-search-mode"
+              checked={searchMode === "fuzzy"}
+              onChange={() => setSearchMode("fuzzy")}
+            />
+            Fuzzy
+          </label>
+          {searchMode === "fuzzy" && (
+            <label class="fuzzy-slider">
+              <span>Fuzziness: {fuzzyLevel.toFixed(1)}</span>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.1"
+                value={fuzzyLevel}
+                onInput={(e) => setFuzzyLevel(Number(e.currentTarget.value))}
+              />
+            </label>
+          )}
+        </div>
         <input
           type="text"
-          placeholder="Search clusters…"
+          placeholder={searchMode === "fuzzy" ? 'Search clusters (typos OK)…' : 'Search clusters…'}
           value={searchQuery}
           onInput={(e) => setSearchQuery(e.currentTarget.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -307,6 +387,7 @@ export function Graph({ result, onBack }: Props) {
             onClick={() => {
               setSearchQuery("");
               setHighlightedIds(new Set());
+              setSearchResults([]);
             }}
           >
             Clear
@@ -342,6 +423,28 @@ export function Graph({ result, onBack }: Props) {
             <p class="sidebar-desc">
               Click another cluster to compare, or click this one again to close.
             </p>
+          </div>
+        )}
+
+        {/* Search results panel (when no cluster selected) */}
+        {!selectedCluster && searchResults.length > 0 && (
+          <div class="graph-sidebar">
+            <h3>🔍 Search results</h3>
+            <p class="sidebar-meta">{searchResults.length} matches</p>
+            <ul class="sidebar-messages">
+              {searchResults.map((r) => (
+                <li key={r.msg.id} class="sidebar-msg">
+                  <div class="sidebar-msg-sender">
+                    {r.msg.senderDisplayName || r.msg.senderHandle || "unknown"}
+                    {r.matchTerms && r.matchTerms.length > 0 && (
+                      <span class="match-terms"> — {r.matchTerms.slice(0, 2).join(", ")}</span>
+                    )}
+                  </div>
+                  <div class="sidebar-msg-text">{r.msg.text.slice(0, 140)}{r.msg.text.length > 140 ? "…" : ""}</div>
+                  <div class="sidebar-msg-time">{new Date(r.msg.sentAt).toLocaleString()}</div>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
       </div>
