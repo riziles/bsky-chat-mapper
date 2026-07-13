@@ -8,6 +8,11 @@ main {
   padding: 2rem 1rem;
 }
 
+main.graph-view {
+  max-width: none;
+  padding: 0 1rem;
+}
+
 .container {
   background: var(--bg-card);
   border: 1px solid var(--border);
