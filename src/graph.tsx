@@ -4,8 +4,9 @@ import * as d3Selection from "d3-selection";
 import * as d3Zoom from "d3-zoom";
 import * as d3Drag from "d3-drag";
 import { embed, cosineSim } from "@ternlight/mini";
+import MiniSearch from "minisearch";
 import type { ClusterResult, TopicCluster } from "./cluster.ts";
-import { getMessagesByIds, type StoredMessage } from "./db.ts";
+import { getMessagesByIds, getEmbeddedMessages, type StoredMessage } from "./db.ts";
 
 interface Props {
   result: ClusterResult;
@@ -35,7 +36,26 @@ export function Graph({ result, onBack }: Props) {
   const [searchQuery, setSearchQuery] = useState("");
   const [highlightedIds, setHighlightedIds] = useState<Set<number>>(new Set());
   const [searching, setSearching] = useState(false);
+  const [searchMode, setSearchMode] = useState<"semantic" | "fuzzy">("semantic");
+  const [fuzzyLevel, setFuzzyLevel] = useState(0.4);
   const simulationRef = useRef<d3Force.Simulation<SimNode, SimLink> | null>(null);
+  const miniSearchRef = useRef<MiniSearch | null>(null);
+  const miniReady = useRef(false);
+
+  // Build MiniSearch index for fuzzy cluster search
+  useEffect(() => {
+    if (miniReady.current) return;
+    miniReady.current = true;
+    getEmbeddedMessages(result.clusters[0]?.messageIds[0]?.split(":")[0] ?? "").then((msgs) => {
+      const mini = new MiniSearch({
+        fields: ["text", "senderDisplayName", "senderHandle"],
+        storeFields: ["id"],
+        searchOptions: { boost: { text: 2 }, fuzzy: 0.4, prefix: true },
+      });
+      mini.addAll(msgs.map((m) => ({ id: m.id, text: m.text, senderDisplayName: m.senderDisplayName ?? "", senderHandle: m.senderHandle ?? "" })));
+      miniSearchRef.current = mini;
+    }).catch(() => {});
+  }, []);
 
   // Build graph data
   const nodes: SimNode[] = result.clusters.map((c, i) => ({
@@ -248,14 +268,32 @@ export function Graph({ result, onBack }: Props) {
     }
     setSearching(true);
     try {
-      const queryVec = embed(searchQuery.trim());
-      const scores = nodes.map((n, i) => ({
-        i,
-        sim: cosineSim(queryVec, new Float32Array(n.cluster.centroid)),
-      }));
-      scores.sort((a, b) => b.sim - a.sim);
-      const highlighted = new Set(scores.slice(0, 5).map((s) => s.i));
-      setHighlightedIds(highlighted);
+      if (searchMode === "fuzzy") {
+        const mini = miniSearchRef.current;
+        if (!mini) return;
+        const hits = mini.search(searchQuery.trim(), { fuzzy: fuzzyLevel, prefix: true });
+        const clusterByMsg = new Map<string, number>();
+        for (const n of nodes) {
+          for (const mid of n.cluster.messageIds) {
+            clusterByMsg.set(mid, n.id);
+          }
+        }
+        const matchedClusters = new Set<number>();
+        for (const h of hits) {
+          const cid = clusterByMsg.get(h.id);
+          if (cid != null) matchedClusters.add(cid);
+        }
+        setHighlightedIds(matchedClusters);
+      } else {
+        const queryVec = embed(searchQuery.trim());
+        const scores = nodes.map((n, i) => ({
+          i,
+          sim: cosineSim(queryVec, new Float32Array(n.cluster.centroid)),
+        }));
+        scores.sort((a, b) => b.sim - a.sim);
+        const highlighted = new Set(scores.slice(0, 5).map((s) => s.i));
+        setHighlightedIds(highlighted);
+      }
     } catch {
       // Ignore search errors
     } finally {
@@ -291,9 +329,42 @@ export function Graph({ result, onBack }: Props) {
 
       {/* Search bar */}
       <div class="graph-search">
+        <div class="search-mode-bar">
+          <label class="search-mode-label">
+            <input
+              type="radio"
+              name="graph-search-mode"
+              checked={searchMode === "semantic"}
+              onChange={() => setSearchMode("semantic")}
+            />
+            Semantic
+          </label>
+          <label class="search-mode-label">
+            <input
+              type="radio"
+              name="graph-search-mode"
+              checked={searchMode === "fuzzy"}
+              onChange={() => setSearchMode("fuzzy")}
+            />
+            Fuzzy
+          </label>
+          {searchMode === "fuzzy" && (
+            <label class="fuzzy-slider">
+              <span>Fuzziness: {fuzzyLevel.toFixed(1)}</span>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.1"
+                value={fuzzyLevel}
+                onInput={(e) => setFuzzyLevel(Number(e.currentTarget.value))}
+              />
+            </label>
+          )}
+        </div>
         <input
           type="text"
-          placeholder="Search clusters…"
+          placeholder={searchMode === "fuzzy" ? 'Search clusters (typos OK)…' : 'Search clusters…'}
           value={searchQuery}
           onInput={(e) => setSearchQuery(e.currentTarget.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSearch()}
