@@ -10,6 +10,7 @@
 
 import { cosineSim } from "@ternlight/mini";
 import type { StoredMessage } from "./db.ts";
+import { safeText } from "./utils.ts";
 
 export interface TopicCluster {
   id: number;
@@ -346,7 +347,7 @@ function tfidfLabels(
     for (const id of c.ids) {
       const msg = msgMap.get(id);
       if (!msg) continue;
-      const words = msg.text
+      const words = safeText(msg.text)
         .toLowerCase()
         .replace(/[^a-záéíóúñü0-9\s]/g, "")
         .split(/\s+/)

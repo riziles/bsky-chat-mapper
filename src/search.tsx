@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "preact/hooks";
 import MiniSearch from "minisearch";
 import { embed, cosineSim } from "@ternlight/mini";
 import { getEmbeddedMessages, type StoredMessage } from "./db.ts";
+import { safeText } from "./utils.ts";
 
 interface Props {
   convoId: string;
@@ -178,7 +179,7 @@ export function MessageSearch({ convoId }: Props) {
                     )}
                   </span>
                 </div>
-                <div class="search-result-text">{r.msg.text}</div>
+                <div class="search-result-text">{safeText(r.msg.text)}</div>
                 <div class="search-result-time">
                   {new Date(r.msg.sentAt).toLocaleString()}
                 </div>

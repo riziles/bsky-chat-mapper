@@ -372,7 +372,13 @@ export function App() {
   }
 
   function groupName(convo: ConvoSummary): string {
-    return convo.groupName || "Unnamed Group";
+    if (convo.groupName) return convo.groupName;
+    if (!isGroup(convo) && convo.members.length >= 2) {
+      // DM: show the other person's name
+      const other = convo.members.find((m) => m.did !== a?.session?.did);
+      return other?.displayName || other?.handle || "Direct Message";
+    }
+    return "Unnamed Group";
   }
 
   function memberCount(convo: ConvoSummary): number {
@@ -384,7 +390,7 @@ export function App() {
     return (
       <main>
         <div class="container">
-          <h1>🦋 Bluesky Chat Mapper</h1>
+          <h1>Bluesky Chat Mapper</h1>
           <p class="loading">Initializing…</p>
         </div>
       </main>
@@ -396,7 +402,7 @@ export function App() {
     return (
       <main>
         <div class="container login-container">
-          <div class="logo">🦋</div>
+          <div class="logo">~</div>
           <h1>Bluesky Chat Mapper</h1>
           <p class="subtitle">
             Visualize your group chats as interactive mindmaps.
@@ -444,7 +450,7 @@ export function App() {
     return (
       <main>
         <header>
-          <h1>🦋 Bluesky Chat Mapper</h1>
+          <h1>Bluesky Chat Mapper</h1>
           <button class="logout-btn" onClick={handleLogout}>
             Log out
           </button>
@@ -471,7 +477,7 @@ export function App() {
                 <div class="convo-header">
                   <span class="convo-name">{groupName(convo)}</span>
                   <span class="convo-badge">
-                    {isGroup(convo) ? "👥" : "💬"} {memberCount(convo)}
+                    ({isGroup(convo) ? "group" : "dm"}, {memberCount(convo)})
                   </span>
                 </div>
                 {convo.lastMessage && (
@@ -510,7 +516,7 @@ export function App() {
     return (
       <main class="graph-view">
         <header>
-          <h1>🦋 Bluesky Chat Mapper</h1>
+          <h1>Bluesky Chat Mapper</h1>
           <button class="logout-btn" onClick={handleLogout}>
             Log out
           </button>
@@ -528,7 +534,7 @@ export function App() {
   return (
     <main>
       <header>
-        <h1>🦋 Bluesky Chat Mapper</h1>
+        <h1>Bluesky Chat Mapper</h1>
         <button class="logout-btn" onClick={handleLogout}>
           Log out
         </button>
@@ -540,7 +546,7 @@ export function App() {
         </button>
 
         <h2>{groupName(selectedConvo!)}</h2>
-        <p class="fetch-meta">👥 {memberCount(selectedConvo!)} members</p>
+        <p class="fetch-meta">{memberCount(selectedConvo!)} members</p>
 
         {/* Auto-start the current phase (runs once per phase) */}
         {(() => {
