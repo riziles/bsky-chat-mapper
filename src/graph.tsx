@@ -86,9 +86,16 @@ export function Graph({ result, onBack }: Props) {
         .id((d: SimNode) => d.id)
         .distance((d: d3Force.SimulationLinkDatum<SimNode>) => 80 - (d as SimLink).sim * 40))
       .force("charge", chargeForce)
-      .force("center", centerForce)
+      .force("center", centerForce.strength(0.15))
       .force("collision", d3Force.forceCollide<SimNode>().radius(
         (d: SimNode) => radiusScale(d.cluster.size) + 6))
+      .force("bounds", () => {
+        for (const n of nodes) {
+          const r = radiusScale(n.cluster.size) + 10;
+          n.x = Math.max(r, Math.min(width - r, n.x!));
+          n.y = Math.max(r, Math.min(height - r, n.y!));
+        }
+      })
       .stop();
 
     simulationRef.current = simulation;
