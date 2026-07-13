@@ -77,20 +77,44 @@ export function Graph({ result, onBack }: Props) {
     svg.call(zoomBehavior);
 
     // Simulation
-    const chargeForce = d3Force.forceManyBody().strength(-300);
+    const chargeStrength = -width * 0.35;
+    const chargeForce = d3Force.forceManyBody().strength(chargeStrength);
     const centerForce = d3Force.forceCenter(width / 2, height / 2);
 
     const simulation = d3Force.forceSimulation<SimNode>(nodes)
       .force("link", d3Force.forceLink<SimNode, SimLink>(links)
         .id((d: SimNode) => d.id)
-        .distance((d: d3Force.SimulationLinkDatum<SimNode>) =>
-          100 - (d as SimLink).sim * 60))
+        .distance((d: d3Force.SimulationLinkDatum<SimNode>) => 80 - (d as SimLink).sim * 40))
       .force("charge", chargeForce)
       .force("center", centerForce)
       .force("collision", d3Force.forceCollide<SimNode>().radius(
-        (d: SimNode) => radiusScale(d.cluster.size) + 4));
+        (d: SimNode) => radiusScale(d.cluster.size) + 6))
+      .stop();
 
     simulationRef.current = simulation;
+
+    // Run simulation to completion, then scale graph to fill viewport
+    for (let i = 0; i < 300; i++) simulation.tick();
+    
+    // Compute bounding box of all nodes
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const n of nodes) {
+      const r = radiusScale(n.cluster.size);
+      if (n.x! - r < minX) minX = n.x! - r;
+      if (n.y! - r < minY) minY = n.y! - r;
+      if (n.x! + r > maxX) maxX = n.x! + r;
+      if (n.y! + r > maxY) maxY = n.y! + r;
+    }
+    
+    // Auto-fit: scale+translate to fill 90% of viewport
+    const graphW = maxX - minX || 1;
+    const graphH = maxY - minY || 1;
+    const s = Math.min(width / graphW, height / graphH) * 0.9;
+    const tx = (width - graphW * s) / 2 - minX * s;
+    const ty = (height - graphH * s) / 2 - minY * s;
+    
+    // Use zoom identity (so pan/zoom work relative to auto-fit)
+    zoomBehavior.transform(svg, d3Zoom.zoomIdentity.translate(tx, ty).scale(s));
 
     // Draw links
     const link = g.append("g")

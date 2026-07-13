@@ -500,7 +500,7 @@ export function App() {
   // --- Graph view ---
   if (state === "graph" && clusterResult) {
     return (
-      <main>
+      <main class="graph-view">
         <header>
           <h1>🦋 Bluesky Chat Mapper</h1>
           <button class="logout-btn" onClick={handleLogout}>
