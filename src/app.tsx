@@ -72,6 +72,7 @@ export function App() {
   const [isIncremental, setIsIncremental] = useState(false);
   const [existingCount, setExistingCount] = useState(0);
   const autoStartedRef = useRef<Set<string>>(new Set());
+  const [userStarted, setUserStarted] = useState(false);
 
   // Try to restore a session if one exists
   useEffect(() => {
@@ -150,6 +151,7 @@ export function App() {
     setIsIncremental(false);
     setExistingCount(0);
     autoStartedRef.current = new Set();
+    setUserStarted(false);
     setError(null);
     terminateWorker();
     setState("processing");
@@ -165,6 +167,7 @@ export function App() {
   // --- Fetch ---
   async function startFetch() {
     if (!a || !selectedConvo) return;
+    setUserStarted(true);
     setFetching(true);
     setError(null);
     setFetchProgress({ fetched: 0, oldestDate: null, done: false });
@@ -537,8 +540,7 @@ export function App() {
         {(() => {
           if (!autoStartedRef.current.has(phase)) {
             autoStartedRef.current.add(phase);
-            if (phase === "fetch") setTimeout(startFetch, 50);
-            else if (phase === "embed") setTimeout(startEmbedding, 50);
+            if (phase === "embed") setTimeout(startEmbedding, 50);
             else if (phase === "cluster") setTimeout(startClustering, 50);
           }
           return null;
@@ -567,52 +569,59 @@ export function App() {
 
         {error && <p class="error">{error}</p>}
 
-        {/* --- Step 1: Fetch --- */}
-        {phase === "fetch" && (
-          <>
-            <div class="time-filter">
-              <label for="time-range">Time range:</label>
-              <select
-                id="time-range"
-                value={timeRange}
-                onChange={(e) => setTimeRange(e.currentTarget.value as TimeRange)}
-                disabled={fetching}
-              >
-                <option value="all">All time</option>
-                <option value="1m">Last month</option>
-                <option value="3m">Last 3 months</option>
-                <option value="6m">Last 6 months</option>
-                <option value="12m">Last year</option>
-                <option value="custom">Custom…</option>
-              </select>
+        {/* --- Time filter (always visible until fetch starts) --- */}
+        {!fetching && !fetchDone && (
+          <div class="time-filter">
+            <label for="time-range">Time range:</label>
+            <select
+              id="time-range"
+              value={timeRange}
+              onChange={(e) => setTimeRange(e.currentTarget.value as TimeRange)}
+            >
+              <option value="all">All time</option>
+              <option value="1m">Last month</option>
+              <option value="3m">Last 3 months</option>
+              <option value="6m">Last 6 months</option>
+              <option value="12m">Last year</option>
+              <option value="custom">Custom…</option>
+            </select>
 
-              {timeRange === "custom" && (
-                <label class="custom-days">
-                  <input
-                    type="number"
-                    min={1}
-                    max={3650}
-                    value={customDays}
-                    onChange={(e) => setCustomDays(Number(e.currentTarget.value) || 30)}
-                    disabled={fetching}
-                    class="custom-days-input"
-                  />
-                  days
-                </label>
-              )}
+            {timeRange === "custom" && (
+              <label class="custom-days">
+                <input
+                  type="number"
+                  min={1}
+                  max={3650}
+                  value={customDays}
+                  onChange={(e) => setCustomDays(Number(e.currentTarget.value) || 30)}
+                  class="custom-days-input"
+                />
+                days
+              </label>
+            )}
 
-              {!fetching && !fetchProgress && (
-                <button class="fetch-btn" onClick={startFetch}>
-                  Fetch messages
-                </button>
-              )}
-              {fetching && (
-                <button class="cancel-btn" onClick={cancelFetch}>
-                  Cancel
-                </button>
-              )}
-            </div>
+            {!userStarted && !fetching && !fetchProgress && (
+              <button class="fetch-btn" onClick={startFetch}>
+                Start
+              </button>
+            )}
+          </div>
+        )}
 
+        {/* --- Step 1: Pull — always visible after user clicks Start --- */}
+        {userStarted && (
+          <div class="step-section">
+            <h3 class="step-header">
+              <span class={phase === "fetch" ? "step-dot active" : fetchDone ? "step-dot done" : "step-dot"}>1</span>
+              Pull messages
+              {fetchDone && <span class="step-check">✅</span>}
+              {fetching && !fetchDone && <span class="step-status">Running…</span>}
+            </h3>
+            {fetching && (
+              <button class="cancel-btn" onClick={cancelFetch}>
+                Cancel
+              </button>
+            )}
             {fetchProgress && (
               <div class="progress-section">
                 <div class="progress-bar">
@@ -640,21 +649,21 @@ export function App() {
                 </p>
               </div>
             )}
-
             {fetchDone && fetchedMsgs.length === 0 && (
               <p class="empty">No messages in this time range.</p>
             )}
-          </>
+          </div>
         )}
 
-        {/* --- Step 2: Embed --- */}
-        {phase === "embed" && (
-          <>
-            <p class="phase-desc">
-              Generating semantic embeddings for {fetchedMsgs.length} messages
-              using on-device AI (runs entirely in your browser).
-            </p>
-
+        {/* --- Step 2: Embed — always visible after fetch done --- */}
+        {fetchDone && (
+          <div class="step-section">
+            <h3 class="step-header">
+              <span class={phase === "embed" ? "step-dot active" : embedDone ? "step-dot done" : "step-dot"}>2</span>
+              Generate embeddings
+              {!embedding && embedDone && <span class="step-check">✅</span>}
+              {embedding && <span class="step-status">Running…</span>}
+            </h3>
             {embedProgress && (
               <div class="progress-section">
                 <div class="progress-bar">
@@ -671,16 +680,18 @@ export function App() {
                 </p>
               </div>
             )}
-          </>
+          </div>
         )}
 
-        {/* --- Step 3: Cluster --- */}
-        {(phase === "cluster" || phase === "done") && (
-          <>
-            <p class="phase-desc">
-              Group similar messages into topic clusters.
-            </p>
-
+        {/* --- Step 3: Cluster — always visible after embed done --- */}
+        {embedDone && (
+          <div class="step-section">
+            <h3 class="step-header">
+              <span class={phase === "cluster" ? "step-dot active" : clusterDone ? "step-dot done" : "step-dot"}>3</span>
+              Cluster messages
+              {!clustering && clusterDone && <span class="step-check">✅</span>}
+              {clustering && <span class="step-status">Running…</span>}
+            </h3>
             {clustering && (
               <div class="progress-section">
                 <div class="progress-bar indeterminate">
@@ -689,50 +700,51 @@ export function App() {
                 <p class="progress-text">🔍 Grouping messages into topics…</p>
               </div>
             )}
+          </div>
+        )}
 
-            {clusterResult && clusterResult.clusters.length > 0 && (
-              <div class="cluster-results">
-                <p class="summary-count">
-                  ✅ {clusterResult.clusters.length} topic clusters
-                  {" · "}
-                  {clusterResult.clusters.reduce((s, c) => s + c.size, 0)}{" "}
-                  messages grouped
-                </p>
+        {/* --- Results --- */}
+        {clusterResult && clusterResult.clusters.length > 0 && (
+          <div class="cluster-results">
+            <p class="summary-count">
+              ✅ {clusterResult.clusters.length} topic clusters
+              {" · "}
+              {clusterResult.clusters.reduce((s, c) => s + c.size, 0)}{" "}
+              messages grouped
+            </p>
 
-                <ul class="cluster-list">
-                  {clusterResult.clusters.slice(0, 20).map((c) => (
-                    <li key={c.id} class="cluster-item">
-                      <div class="cluster-header">
-                        <span class="cluster-label">{c.label}</span>
-                        <span class="cluster-size">{c.size} msgs</span>
-                      </div>
-                      <div
-                        class="cluster-bar"
-                        style={{
-                          width: `${Math.min((c.size / clusterResult.clusters[0].size) * 100, 100)}%`,
-                        }}
-                      />
-                    </li>
-                  ))}
-                </ul>
+            <ul class="cluster-list">
+              {clusterResult.clusters.slice(0, 20).map((c) => (
+                <li key={c.id} class="cluster-item">
+                  <div class="cluster-header">
+                    <span class="cluster-label">{c.label}</span>
+                    <span class="cluster-size">{c.size} msgs</span>
+                  </div>
+                  <div
+                    class="cluster-bar"
+                    style={{
+                      width: `${Math.min((c.size / clusterResult.clusters[0].size) * 100, 100)}%`,
+                    }}
+                  />
+                </li>
+              ))}
+            </ul>
 
-                <button
-                  class="generate-btn"
-                  onClick={() => setState("graph")}
-                >
-                  Generate Map
-                </button>
+            <button
+              class="generate-btn"
+              onClick={() => setState("graph")}
+            >
+              Generate Map
+            </button>
 
-                <MessageSearch convoId={selectedConvo!.id} />
-              </div>
-            )}
+            <MessageSearch convoId={selectedConvo!.id} />
+          </div>
+        )}
 
-            {clusterResult && clusterResult.clusters.length === 0 && (
-              <p class="empty">
-                No clusters found. Try fetching more messages first.
-              </p>
-            )}
-          </>
+        {clusterResult && clusterResult.clusters.length === 0 && (
+          <p class="empty">
+            No clusters found. Try fetching more messages first.
+          </p>
         )}
       </div>
     </main>

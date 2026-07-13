@@ -702,6 +702,59 @@ header h1 {
   font-variant-numeric: tabular-nums;
 }
 
+/* ---- Stacked step sections ---- */
+.step-section {
+  margin-bottom: 1rem;
+  padding: 1rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.step-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+  margin: 0 0 0.5rem;
+  font-weight: 600;
+}
+
+.step-dot {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: var(--bg-hover);
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.step-dot.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.step-dot.done {
+  background: var(--success);
+  color: #fff;
+}
+
+.step-check {
+  margin-left: auto;
+}
+
+.step-status {
+  margin-left: auto;
+  font-size: 0.8rem;
+  color: var(--accent);
+  font-weight: 400;
+}
+
 .search-result-text {
   font-size: 0.85rem;
   color: var(--text);
