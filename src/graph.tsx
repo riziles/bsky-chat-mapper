@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from "preact/hooks";
+import { useRef, useEffect, useState, useMemo } from "preact/hooks";
 import * as d3Force from "d3-force";
 import * as d3Selection from "d3-selection";
 import * as d3Zoom from "d3-zoom";
@@ -62,20 +62,24 @@ export function Graph({ result, convoId, onBack }: Props) {
     }).catch(() => {});
   }, []);
 
-  // Build graph data
-  const nodes: SimNode[] = result.clusters.map((c, i) => ({
-    id: i,
-    cluster: c,
-  }));
+  // Build graph data (memoized to avoid re-render flickering)
+  const nodes: SimNode[] = useMemo(
+    () => result.clusters.map((c, i) => ({ id: i, cluster: c })),
+    [result.clusters],
+  );
 
   const nodeMap = new Map(nodes.map((n) => [n.id, n] as const));
-  const links: SimLink[] = result.similarities
-    .filter((s) => nodeMap.has(s.from) && nodeMap.has(s.to))
-    .map((s) => ({
-      source: s.from,
-      target: s.to,
-      sim: s.sim,
-    }));
+  const links: SimLink[] = useMemo(
+    () =>
+      result.similarities
+        .filter((s) => nodeMap.has(s.from) && nodeMap.has(s.to))
+        .map((s) => ({
+          source: s.from,
+          target: s.to,
+          sim: s.sim,
+        })),
+    [result.similarities, nodes],
+  );
 
   // Run force simulation
   useEffect(() => {
