@@ -372,7 +372,13 @@ export function App() {
   }
 
   function groupName(convo: ConvoSummary): string {
-    return convo.groupName || "Unnamed Group";
+    if (convo.groupName) return convo.groupName;
+    if (!isGroup(convo) && convo.members.length >= 2) {
+      // DM: show the other person's name
+      const other = convo.members.find((m) => m.did !== a?.session?.did);
+      return other?.displayName || other?.handle || "Direct Message";
+    }
+    return "Unnamed Group";
   }
 
   function memberCount(convo: ConvoSummary): number {
