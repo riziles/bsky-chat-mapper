@@ -19,10 +19,15 @@ type AppState = "loading" | "login" | "picker" | "processing" | "graph";
 // Processing phases within the processing view
 type Phase = "fetch" | "embed" | "cluster" | "done";
 
-type TimeRange = "all" | "1m" | "3m" | "6m" | "12m" | "custom";
+type TimeRange = "7d" | "1m" | "3m" | "6m" | "12m" | "all" | "custom";
 
 function timeRangeToDate(range: TimeRange, customDays?: number): Date | undefined {
   if (range === "all") return undefined;
+  if (range === "7d") {
+    const d = new Date();
+    d.setDate(d.getDate() - 7);
+    return d;
+  }
   if (range === "custom" && customDays) {
     const d = new Date();
     d.setDate(d.getDate() - customDays);
@@ -51,7 +56,7 @@ export function App() {
   // Processing state
   const [selectedConvo, setSelectedConvo] = useState<ConvoSummary | null>(null);
   const [phase, setPhase] = useState<Phase>("fetch");
-  const [timeRange, setTimeRange] = useState<TimeRange>("all");
+  const [timeRange, setTimeRange] = useState<TimeRange>("7d");
   const [customDays, setCustomDays] = useState<number>(30);
   const [fetching, setFetching] = useState(false);
   const [fetchProgress, setFetchProgress] = useState<FetchProgress | null>(null);
@@ -139,7 +144,7 @@ export function App() {
   function selectConvo(convo: ConvoSummary) {
     setSelectedConvo(convo);
     setPhase("fetch");
-    setTimeRange("all");
+    setTimeRange("7d");
     setCustomDays(30);
     setFetching(false);
     setFetchProgress(null);
@@ -580,6 +585,7 @@ export function App() {
               onChange={(e) => setTimeRange(e.currentTarget.value as TimeRange)}
             >
               <option value="all">All time</option>
+              <option value="7d">Last 7 days</option>
               <option value="1m">Last month</option>
               <option value="3m">Last 3 months</option>
               <option value="6m">Last 6 months</option>
