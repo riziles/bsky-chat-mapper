@@ -217,13 +217,10 @@ export function Graph({ result, convoId, onBack }: Props) {
       node.attr("transform", (d: SimNode) => `translate(${d.x},${d.y})`);
     });
 
-    // Respond to window resize (only when dimensions actually change)
-    let lastW = width, lastH = height;
+    // Respond to window resize
     const resizeObserver = new ResizeObserver(() => {
       const w = container.clientWidth;
       const h = Math.max(500, window.innerHeight * 0.65);
-      if (w === lastW && h === lastH) return;
-      lastW = w; lastH = h;
       svg.attr("viewBox", `0 0 ${w} ${h}`);
       centerForce.x(w / 2).y(h / 2);
       simulation.alpha(0.3).restart();
