@@ -387,7 +387,7 @@ export function Graph({ result, convoId, onBack }: Props) {
         </div>
         <input
           type="text"
-          placeholder={searchMode === "fuzzy" ? 'Search clusters (typos OK)…' : 'Search clusters…'}
+          placeholder="Search clusters..."
           value={searchQuery}
           onInput={(e) => setSearchQuery(e.currentTarget.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSearch()}

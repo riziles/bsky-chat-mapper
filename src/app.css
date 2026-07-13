@@ -488,6 +488,8 @@ header h1 {
   gap: 0.5rem;
   margin-bottom: 1rem;
   flex-wrap: wrap;
+  min-height: 2.5rem;
+  align-items: center;
 }
 
 .graph-search input {
