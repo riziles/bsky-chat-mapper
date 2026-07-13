@@ -100,7 +100,7 @@ export function MessageSearch({ convoId }: Props) {
 
   return (
     <div class="message-search">
-      <h3>🔍 Search Messages</h3>
+      <h3>[-] Search Messages</h3>
 
       <div class="search-mode-bar">
         <label class="search-mode-label">
@@ -149,7 +149,7 @@ export function MessageSearch({ convoId }: Props) {
           onKeyDown={(e) => e.key === "Enter" && handleSearch()}
         />
         <button onClick={handleSearch} disabled={searching}>
-          {searching ? "…" : "Search"}
+          {searching ? "..." : "Search"}
         </button>
       </div>
 
