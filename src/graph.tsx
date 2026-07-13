@@ -387,13 +387,13 @@ export function Graph({ result, convoId, onBack }: Props) {
         </div>
         <input
           type="text"
-          placeholder={searchMode === "fuzzy" ? 'Search clusters (typos OK)...' : 'Search clusters...'}
+          placeholder={searchMode === "fuzzy" ? 'Search clusters (typos OK)…' : 'Search clusters…'}
           value={searchQuery}
           onInput={(e) => setSearchQuery(e.currentTarget.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSearch()}
         />
         <button onClick={handleSearch} disabled={searching}>
-          {searching ? "..." : "Search"}
+          {searching ? "…" : "Search"}
         </button>
         {highlightedIds.size > 0 && (
           <button
@@ -422,14 +422,14 @@ export function Graph({ result, convoId, onBack }: Props) {
               {Math.round((selectedCluster.size / totalMessages) * 100)}%
             </p>
             {loadingMessages && (
-              <p class="sidebar-loading">Loading messages...</p>
+              <p class="sidebar-loading">Loading messages…</p>
             )}
             {!loadingMessages && clusterMessages.length > 0 && (
               <ul class="sidebar-messages">
                 {clusterMessages.map((m) => (
                   <li key={m.id} class="sidebar-msg">
                     <div class="sidebar-msg-sender">{m.senderDisplayName || m.senderHandle || "unknown"}</div>
-                    <div class="sidebar-msg-text">{safeText(m.text).slice(0, 140)}{m.text.length > 140 ? "..." : ""}</div>
+                    <div class="sidebar-msg-text">{safeText(m.text).slice(0, 140)}{m.text.length > 140 ? "…" : ""}</div>
                   </li>
                 ))}
               </ul>
@@ -443,7 +443,7 @@ export function Graph({ result, convoId, onBack }: Props) {
         {/* Search results panel (when no cluster selected) */}
         {!selectedCluster && searchResults.length > 0 && (
           <div class="graph-sidebar">
-            <h3>[-] Search results</h3>
+            <h3>🔍 Search results</h3>
             <p class="sidebar-meta">{searchResults.length} matches</p>
             <ul class="sidebar-messages">
               {searchResults.map((r) => (
@@ -454,7 +454,7 @@ export function Graph({ result, convoId, onBack }: Props) {
                       <span class="match-terms"> — {r.matchTerms.slice(0, 2).join(", ")}</span>
                     )}
                   </div>
-                  <div class="sidebar-msg-text">{safeText(r.msg.text).slice(0, 140)}{r.msg.text.length > 140 ? "..." : ""}</div>
+                  <div class="sidebar-msg-text">{safeText(r.msg.text).slice(0, 140)}{r.msg.text.length > 140 ? "…" : ""}</div>
                   <div class="sidebar-msg-time">{new Date(r.msg.sentAt).toLocaleString()}</div>
                 </li>
               ))}

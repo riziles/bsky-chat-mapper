@@ -391,7 +391,7 @@ export function App() {
       <main>
         <div class="container">
           <h1>Bluesky Chat Mapper</h1>
-          <p class="loading">Initializing...</p>
+          <p class="loading">Initializing…</p>
         </div>
       </main>
     );
@@ -459,7 +459,7 @@ export function App() {
         <div class="container">
           <h2>Select a chat</h2>
 
-          {loadingConvos && <p class="loading">Loading conversations...</p>}
+          {loadingConvos && <p class="loading">Loading conversations…</p>}
 
           {error && <p class="error">{error}</p>}
 
@@ -493,18 +493,18 @@ export function App() {
     );
   }
 
-  // --- Processing view (fetch -→gt; embed -→gt; cluster) ---
+  // --- Processing view (fetch → embed → cluster) ---
   const phaseLabels: Record<Phase, string> = {
-    fetch: "1. Pull",
-    embed: "2. Embed",
-    cluster: "3. Cluster",
-    done: "Done OK",
+    fetch: "① Pull",
+    embed: "② Embed",
+    cluster: "③ Cluster",
+    done: "Done ✅",
   };
   const phaseDots: Record<Phase, string> = {
     fetch: "1",
     embed: "2",
     cluster: "3",
-    done: "v",
+    done: "✓",
   };
 
   const fetchDone = fetchProgress?.done && fetchedMsgs.length > 0;
@@ -596,7 +596,7 @@ export function App() {
               <option value="3m">Last 3 months</option>
               <option value="6m">Last 6 months</option>
               <option value="12m">Last year</option>
-              <option value="custom">Custom...</option>
+              <option value="custom">Custom…</option>
             </select>
 
             {timeRange === "custom" && (
@@ -627,8 +627,8 @@ export function App() {
             <h3 class="step-header">
               <span class={phase === "fetch" ? "step-dot active" : fetchDone ? "step-dot done" : "step-dot"}>1</span>
               Pull messages
-              {fetchDone && <span class="step-check">OK</span>}
-              {fetching && !fetchDone && <span class="step-status">Running...</span>}
+              {fetchDone && <span class="step-check">✅</span>}
+              {fetching && !fetchDone && <span class="step-status">Running…</span>}
             </h3>
             {fetching && (
               <button class="cancel-btn" onClick={cancelFetch}>
@@ -648,7 +648,7 @@ export function App() {
                   />
                 </div>
                 <p class="progress-text">
-                  {fetchProgress.done ? "OK" : "[DL]"}{" "}
+                  {fetchProgress.done ? "✅" : "📥"}{" "}
                   {fetchProgress.fetched} new
                   {isIncremental && ` (+${existingCount} existing)`}{" "}
                   messages
@@ -674,8 +674,8 @@ export function App() {
             <h3 class="step-header">
               <span class={phase === "embed" ? "step-dot active" : embedDone ? "step-dot done" : "step-dot"}>2</span>
               Generate embeddings
-              {!embedding && embedDone && <span class="step-check">OK</span>}
-              {embedding && <span class="step-status">Running...</span>}
+              {!embedding && embedDone && <span class="step-check">✅</span>}
+              {embedding && <span class="step-status">Running…</span>}
             </h3>
             {embedProgress && (
               <div class="progress-section">
@@ -688,7 +688,7 @@ export function App() {
                   />
                 </div>
                 <p class="progress-text">
-                  {embedding ? "[AI]" : "OK"} {embedProgress.done} /{" "}
+                  {embedding ? "🧠" : "✅"} {embedProgress.done} /{" "}
                   {embedProgress.total} messages embedded
                 </p>
               </div>
@@ -702,15 +702,15 @@ export function App() {
             <h3 class="step-header">
               <span class={phase === "cluster" ? "step-dot active" : clusterDone ? "step-dot done" : "step-dot"}>3</span>
               Cluster messages
-              {!clustering && clusterDone && <span class="step-check">OK</span>}
-              {clustering && <span class="step-status">Running...</span>}
+              {!clustering && clusterDone && <span class="step-check">✅</span>}
+              {clustering && <span class="step-status">Running…</span>}
             </h3>
             {clustering && (
               <div class="progress-section">
                 <div class="progress-bar indeterminate">
                   <div class="progress-fill" />
                 </div>
-                <p class="progress-text">[-] Grouping messages into topics...</p>
+                <p class="progress-text">🔍 Grouping messages into topics…</p>
               </div>
             )}
           </div>
@@ -720,7 +720,7 @@ export function App() {
         {clusterResult && clusterResult.clusters.length > 0 && (
           <div class="cluster-results">
             <p class="summary-count">
-              OK {clusterResult.clusters.length} topic clusters
+              ✅ {clusterResult.clusters.length} topic clusters
               {" · "}
               {clusterResult.clusters.reduce((s, c) => s + c.size, 0)}{" "}
               messages grouped
