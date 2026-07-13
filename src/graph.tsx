@@ -7,6 +7,7 @@ import { embed, cosineSim } from "@ternlight/mini";
 import MiniSearch from "minisearch";
 import type { ClusterResult, TopicCluster } from "./cluster.ts";
 import { getMessagesByIds, getEmbeddedMessages, type StoredMessage } from "./db.ts";
+import { safeText } from "./utils.ts";
 
 interface Props {
   result: ClusterResult;
@@ -230,7 +231,18 @@ export function Graph({ result, convoId, onBack }: Props) {
       simulation.stop();
       resizeObserver.disconnect();
     };
-  }, [nodes, links, highlightedIds]);
+  }, [nodes, links]);
+
+  // Update node highlights without recreating the graph
+  useEffect(() => {
+    const svg = d3Selection.select(svgRef.current);
+    svg.selectAll<SVGGElement, SimNode>("g g")
+      .select("circle")
+      .attr("stroke", (d: SimNode) =>
+        highlightedIds.has(d.id) ? "#ffff00" : "#1c2333")
+      .attr("stroke-width", (d: SimNode) =>
+        highlightedIds.has(d.id) ? 3 : 1);
+  }, [highlightedIds]);
 
   // Restart simulation on highlight change
   useEffect(() => {
@@ -417,7 +429,7 @@ export function Graph({ result, convoId, onBack }: Props) {
                 {clusterMessages.map((m) => (
                   <li key={m.id} class="sidebar-msg">
                     <div class="sidebar-msg-sender">{m.senderDisplayName || m.senderHandle || "unknown"}</div>
-                    <div class="sidebar-msg-text">{m.text.slice(0, 140)}{m.text.length > 140 ? "…" : ""}</div>
+                    <div class="sidebar-msg-text">{safeText(m.text).slice(0, 140)}{m.text.length > 140 ? "…" : ""}</div>
                   </li>
                 ))}
               </ul>
@@ -442,7 +454,7 @@ export function Graph({ result, convoId, onBack }: Props) {
                       <span class="match-terms"> — {r.matchTerms.slice(0, 2).join(", ")}</span>
                     )}
                   </div>
-                  <div class="sidebar-msg-text">{r.msg.text.slice(0, 140)}{r.msg.text.length > 140 ? "…" : ""}</div>
+                  <div class="sidebar-msg-text">{safeText(r.msg.text).slice(0, 140)}{r.msg.text.length > 140 ? "…" : ""}</div>
                   <div class="sidebar-msg-time">{new Date(r.msg.sentAt).toLocaleString()}</div>
                 </li>
               ))}
