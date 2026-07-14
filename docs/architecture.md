@@ -9,18 +9,18 @@ A static web app that connects to Bluesky via password auth, pulls a single grou
 ## Architecture
 
 ```
-┌────────────────────────────────────────────────────┐
+┌─────────────────────────────────────────────────────┐
 │  Static files (GitHub Pages)                        │
 │                                                     │
 │  src/                                               │
-│    auth.ts        ← createSession + proxy header     │
+│    auth.ts        ← createSession + proxy header    │
 │    api.ts         ← ATProto chat fetching           │
 │    db.ts          ← IndexedDB wrapper               │
 │    embed.worker.ts← Ternlight WASM embedding worker │
 │    cluster.ts     ← TF-IDF clustering + reply chains│
 │    graph.tsx      ← D3 force-directed mindmap       │
-│    search.tsx     ← Dual-mode search (semantic +     │
-│                      fuzzy via MiniSearch)           │
+│    search.tsx     ← Dual-mode search (semantic +    │
+│                      fuzzy via MiniSearch)          │
 │    app.tsx        ← UI shell                        │
 │    utils.ts       ← Safe text utilities             │
 │                                                     │
@@ -29,23 +29,23 @@ A static web app that connects to Bluesky via password auth, pulls a single grou
 │    favicon.svg                                      │
 │                                                     │
 │  User flow:                                         │
-│  1. Visit site → enter handle + password + PDS URL   │
+│  1. Visit site → enter handle + password + PDS URL  │
 │  2. List group chats → pick one                     │
 │  3. Set time filter (default 7 days)                │
 │  4. Click Start → pull → embed → cluster → map      │
-└────────────────────────────────────────────────────┘
+└─────────────────────────────────────────────────────┘
 ```
 
 ## Key Libraries
 
-| Purpose | Package | Size |
-|---|---|---|
-| Auth + API | `@atproto/api` (AtpAgent) | bundled |
-| Embeddings | `@ternlight/mini` | ~5MB WASM |
-| Fuzzy search | `minisearch` | ~6KB gzipped |
-| Graph | `d3-force`, `d3-selection`, `d3-zoom`, `d3-drag` | ~30KB |
-| DB | `idb` (IndexedDB wrapper) | ~2KB |
-| Framework | Preact 10 | ~3KB |
+| Purpose      | Package                                          | Size         |
+| ------------ | ------------------------------------------------ | ------------ |
+| Auth + API   | `@atproto/api` (AtpAgent)                        | bundled      |
+| Embeddings   | `@ternlight/mini`                                | ~5MB WASM    |
+| Fuzzy search | `minisearch`                                     | ~6KB gzipped |
+| Graph        | `d3-force`, `d3-selection`, `d3-zoom`, `d3-drag` | ~30KB        |
+| DB           | `idb` (IndexedDB wrapper)                        | ~2KB         |
+| Framework    | Preact 10                                        | ~3KB         |
 
 ## Auth
 
@@ -157,14 +157,14 @@ interface TopicCluster {
 
 ## Performance & Constraints
 
-| Concern | Detail |
-|---|---|
-| Ternlight WASM | ~5MB download, cached by browser after first visit |
-| Embedding speed | ~2ms/msg in Web Worker; 3,000 msgs ≈ 6s |
-| Memory | 384-dim × 5,000 messages ≈ 7.6MB (Float32) |
-| IndexedDB | All messages + embeddings persisted; incremental pulls only fetch new |
-| Rate limits | 3,000 API req/5min; 100 msgs/page → 30 pages/min |
-| Bundle | ~160KB gzipped JS + WASM + D3 (~30KB) |
+| Concern         | Detail                                                                |
+| --------------- | --------------------------------------------------------------------- |
+| Ternlight WASM  | ~5MB download, cached by browser after first visit                    |
+| Embedding speed | ~2ms/msg in Web Worker; 3,000 msgs ≈ 6s                               |
+| Memory          | 384-dim × 5,000 messages ≈ 7.6MB (Float32)                            |
+| IndexedDB       | All messages + embeddings persisted; incremental pulls only fetch new |
+| Rate limits     | 3,000 API req/5min; 100 msgs/page → 30 pages/min                      |
+| Bundle          | ~160KB gzipped JS + WASM + D3 (~30KB)                                 |
 
 ## Deployment
 

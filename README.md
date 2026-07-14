@@ -40,17 +40,17 @@ src/
 
 ## Stack
 
-| Layer | Choice |
-|---|---|
-| Framework | Preact 10 + TypeScript |
-| Bundler | Vite 8 |
-| Auth | `@atproto/api` (AtpAgent + createSession) |
-| Embeddings | `@ternlight/mini` (WASM) |
-| Search | `minisearch` (fuzzy) |
-| Graph | `d3-force`, `d3-selection`, `d3-zoom`, `d3-drag` |
-| DB | `idb` (IndexedDB) |
-| Deployment | GitHub Pages via `gh-pages` |
-| Package manager | pnpm |
+| Layer           | Choice                                           |
+| --------------- | ------------------------------------------------ |
+| Framework       | Preact 10 + TypeScript                           |
+| Bundler         | Vite 8                                           |
+| Auth            | `@atproto/api` (AtpAgent + createSession)        |
+| Embeddings      | `@ternlight/mini` (WASM)                         |
+| Search          | `minisearch` (fuzzy)                             |
+| Graph           | `d3-force`, `d3-selection`, `d3-zoom`, `d3-drag` |
+| DB              | `idb` (IndexedDB)                                |
+| Deployment      | GitHub Pages via `gh-pages`                      |
+| Package manager | pnpm                                             |
 
 ## Deployment
 
