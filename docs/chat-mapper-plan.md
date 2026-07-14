@@ -129,17 +129,16 @@ interface TopicCluster {
 
 ### OAuth abandoned for now
 
-- OAuth tokens (DPoP-bound) were rejected by the Bluesky PDS for chat proxying (401/403)
-- The PDS host `scalycap.us-west.host.bsky.network` requires `com.atproto.access` scope for `atproto-proxy: did:web:api.bsky.chat#bsky_chat`
-- App passwords produce `com.atproto.appPass` scope — also rejected ("Bad token method")
-- Full password `createSession` produces `com.atproto.access` scope — works
+- OAuth tokens (DPoP-bound) were rejected by Bluesky PDS for chat proxying (401/403)
+- Chat endpoints require `com.atproto.access` scope via `atproto-proxy: did:web:api.bsky.chat#bsky_chat` header
+- App passwords and OAuth produce insufficient scopes; full password `createSession` works
 - OAuth may work on other PDS instances; worth revisiting later
 
-### Chat routing
+### Custom PDS support
 
-- Chat endpoints must go through the PDS with `atproto-proxy: did:web:api.bsky.chat#bsky_chat`
-- Direct calls to `api.bsky.app` or `bsky.social` don't work for chat
-- The `configureProxy()` method on AtpAgent adds the header globally; PDS ignores it for non-chat endpoints
+- Users can enter a custom PDS URL on the login form for private servers
+- Defaults to `https://bsky.social`
+- Session persists PDS URL alongside access/refresh tokens
 
 ### Session persistence
 
