@@ -1,0 +1,11 @@
+[global]
+enable = ["MD060"]
+
+[MD013]
+reflow = true             # Enables automatic text wrapping for paragraphs
+code_blocks = false       # Optional: set to true to wrap long lines in code blocks
+tables = false            # Optional: set to false to prevent breaking tables
+
+[MD060]
+# Use "aligned" to pad columns with spaces for visual alignment
+style = "aligned"
