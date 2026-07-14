@@ -11,7 +11,6 @@ import { storeMessages, storeEmbeddings, getMessagesForConvo, getLatestTimestamp
 import type { AtpAgent } from "@atproto/api";
 import type { ClusterResult } from "./cluster.ts";
 import { Graph } from "./graph.tsx";
-import { MessageSearch } from "./search.tsx";
 import "./app.css";
 
 type AppState = "loading" | "login" | "picker" | "processing" | "graph";
@@ -773,7 +772,6 @@ export function App() {
               Generate Map
             </button>
 
-            <MessageSearch convoId={selectedConvo!.id} />
           </div>
         )}
 
