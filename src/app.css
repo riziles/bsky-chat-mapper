@@ -511,6 +511,50 @@ header h1 {
   color: #fff;
 }
 
+/* ---- Poster filter ---- */
+.poster-filter {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.poster-filter input {
+  width: 150px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.875rem;
+  font-family: var(--font);
+}
+
+.poster-filter input:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.clear-poster {
+  position: absolute;
+  right: 4px;
+  background: none !important;
+  border: none !important;
+  color: var(--text-muted) !important;
+  font-size: 0.75rem;
+  padding: 0 0.25rem !important;
+  cursor: pointer;
+}
+
+.clear-poster:hover {
+  color: var(--text) !important;
+}
+
+@media (max-width: 700px) {
+  .poster-filter input {
+    width: 100%;
+  }
+}
+
 .clear-search {
   background: none !important;
   border: 1px solid var(--text-muted) !important;

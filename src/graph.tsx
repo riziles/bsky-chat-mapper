@@ -44,7 +44,18 @@ export function Graph({ result, convoId, onBack }: Props) {
   const miniSearchRef = useRef<MiniSearch | null>(null);
   const msgCacheRef = useRef<Map<string, StoredMessage>>(new Map());
   const [searchResults, setSearchResults] = useState<{msg: StoredMessage; score: number; matchTerms?: string[]}[]>([]);
+  const [posterFilter, setPosterFilter] = useState("");
+  const [senders, setSenders] = useState<{did: string; displayName: string; handle: string}[]>([]);
   const miniReady = useRef(false);
+
+  // Resolve posterFilter text (display name or handle) to sender DID
+  const posterDid = useMemo(() => {
+    if (!posterFilter.trim()) return null;
+    const q = posterFilter.trim().toLowerCase();
+    return senders.find(
+      (s) => s.displayName.toLowerCase() === q || s.handle.toLowerCase() === q || s.did === q,
+    )?.did ?? null;
+  }, [posterFilter, senders]);
 
   // Build MiniSearch index for fuzzy cluster search
   useEffect(() => {
@@ -59,6 +70,22 @@ export function Graph({ result, convoId, onBack }: Props) {
       });
       mini.addAll(msgs.map((m) => ({ id: m.id, text: m.text, senderDisplayName: m.senderDisplayName ?? "", senderHandle: m.senderHandle ?? "" })));
       miniSearchRef.current = mini;
+
+      // Collect unique senders for autocomplete
+      const seen = new Map<string, {did: string; displayName: string; handle: string}>();
+      for (const m of msgs) {
+        if (seen.has(m.senderDid)) continue;
+        seen.set(m.senderDid, {
+          did: m.senderDid,
+          displayName: m.senderDisplayName ?? "",
+          handle: m.senderHandle ?? "",
+        });
+      }
+      setSenders(
+        Array.from(seen.values()).sort((a, b) =>
+          (a.displayName || a.handle).localeCompare(b.displayName || b.handle),
+        ),
+      );
     }).catch(() => {});
   }, []);
 
@@ -300,22 +327,38 @@ export function Graph({ result, convoId, onBack }: Props) {
           }
         }
         const matchedClusters = new Set<number>();
+        const filtered: typeof hits = [];
         for (const h of hits) {
+          // Apply poster filter if set
+          if (posterDid) {
+            const msg = msgCacheRef.current.get(h.id);
+            if (!msg || msg.senderDid !== posterDid) continue;
+          }
           const cid = clusterByMsg.get(h.id);
           if (cid != null) matchedClusters.add(cid);
+          filtered.push(h);
         }
         setHighlightedIds(matchedClusters);
-        msgResults = hits.slice(0, 20).map((h) => ({
+        msgResults = filtered.slice(0, 20).map((h) => ({
           msg: msgCacheRef.current.get(h.id)!,
           score: h.score,
           matchTerms: Object.keys(h.match).filter((k) => h.match[k].length > 0),
         })).filter((r) => r.msg);
       } else {
         const queryVec = embed(searchQuery.trim());
-        const scores = nodes.map((n, i) => ({
+        let scores = nodes.map((n, i) => ({
           i,
           sim: cosineSim(queryVec, new Float32Array(n.cluster.centroid)),
         }));
+        // If poster filter is active, boost clusters containing messages from that poster
+        if (posterDid) {
+          scores = scores.map((s) => {
+            const hasPosterMsgs = nodes[s.i].cluster.messageIds.some(
+              (mid) => msgCacheRef.current.get(mid)?.senderDid === posterDid,
+            );
+            return { i: s.i, sim: hasPosterMsgs ? s.sim : -1 };
+          });
+        }
         scores.sort((a, b) => b.sim - a.sim);
         const highlighted = new Set(scores.slice(0, 5).map((s) => s.i));
         setHighlightedIds(highlighted);
@@ -396,6 +439,31 @@ export function Graph({ result, convoId, onBack }: Props) {
           onInput={(e) => setSearchQuery(e.currentTarget.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSearch()}
         />
+        <div class="poster-filter">
+          <input
+            type="text"
+            list="poster-list"
+            placeholder="Filter by poster…"
+            value={posterFilter}
+            onInput={(e) => setPosterFilter(e.currentTarget.value)}
+          />
+          <datalist id="poster-list">
+            {senders.map((s) => (
+              <option key={s.did} value={s.displayName || s.handle}>
+                {s.handle}
+              </option>
+            ))}
+          </datalist>
+          {posterFilter && (
+            <button
+              class="clear-poster"
+              onClick={() => setPosterFilter("")}
+              title="Clear poster filter"
+            >
+              ✕
+            </button>
+          )}
+        </div>
         <button onClick={handleSearch} disabled={searching}>
           {searching ? "…" : "Search"}
         </button>
@@ -404,6 +472,7 @@ export function Graph({ result, convoId, onBack }: Props) {
             class="clear-search"
             onClick={() => {
               setSearchQuery("");
+              setPosterFilter("");
               setHighlightedIds(new Set());
               setSearchResults([]);
             }}
