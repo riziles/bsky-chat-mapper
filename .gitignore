@@ -25,3 +25,4 @@ pnpm-workspace.yaml
 !.vscode/extensions.json
 yarn-debug.log*
 yarn-error.log*
+test-results/
