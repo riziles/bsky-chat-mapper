@@ -5,8 +5,8 @@ let agent: AtpAgent | null = null;
 const PROXY_HEADER = "did:web:api.bsky.chat#bsky_chat";
 const SESSION_KEY = "bsky-chat-mapper-session";
 
-function createAgentWithProxy(): AtpAgent {
-  const a = new AtpAgent({ service: "https://bsky.social" });
+function createAgentWithProxy(service: string): AtpAgent {
+  const a = new AtpAgent({ service });
   a.configureProxy(PROXY_HEADER);
   return a;
 }
@@ -14,21 +14,23 @@ function createAgentWithProxy(): AtpAgent {
 export async function login(
   identifier: string,
   password: string,
+  service = "https://bsky.social",
 ): Promise<AtpAgent> {
-  agent = createAgentWithProxy();
+  agent = createAgentWithProxy(service);
   await agent.login({ identifier, password });
-  persistSession();
+  persistSession(service);
   return agent;
 }
 
 export async function resumeSession(
   session: AtpSessionData,
+  service = "https://bsky.social",
 ): Promise<AtpAgent | null> {
   try {
-    agent = createAgentWithProxy();
+    agent = createAgentWithProxy(service);
     const result = await agent.resumeSession(session);
     if (result.success) {
-      persistSession();
+      persistSession(service);
       return agent;
     }
     agent = null;
@@ -44,16 +46,22 @@ export async function tryRestoreSession(): Promise<AtpAgent | null> {
   try {
     const raw = localStorage.getItem(SESSION_KEY);
     if (!raw) return null;
-    const session: AtpSessionData = JSON.parse(raw);
-    return resumeSession(session);
+    const data = JSON.parse(raw);
+    // Support both old format (plain session) and new format ({ session, service })
+    const session: AtpSessionData = data.session ?? data;
+    const service: string = data.service ?? "https://bsky.social";
+    return resumeSession(session, service);
   } catch {
     return null;
   }
 }
 
-function persistSession(): void {
+function persistSession(service: string): void {
   if (!agent?.session) return;
-  localStorage.setItem(SESSION_KEY, JSON.stringify(agent.session));
+  localStorage.setItem(SESSION_KEY, JSON.stringify({
+    session: agent.session,
+    service,
+  }));
 }
 
 export function getAgent(): AtpAgent | null {

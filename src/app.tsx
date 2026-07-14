@@ -48,6 +48,7 @@ export function App() {
   const [state, setState] = useState<AppState>("loading");
   const [handle, setHandle] = useState("");
   const [appPassword, setAppPassword] = useState("");
+  const [pdsUrl, setPdsUrl] = useState("https://bsky.social");
   const [error, setError] = useState<string | null>(null);
   const [a, setAgent] = useState<AtpAgent | null>(null);
   const [convos, setConvos] = useState<ConvoSummary[]>([]);
@@ -123,7 +124,7 @@ export function App() {
     if (!handle.trim() || !appPassword.trim()) return;
     setError(null);
     try {
-      const agent = await login(handle.trim(), appPassword.trim());
+      const agent = await login(handle.trim(), appPassword.trim(), pdsUrl.trim() || "https://bsky.social");
       setAgent(agent);
       setState("picker");
       loadConvos(agent);
@@ -138,6 +139,7 @@ export function App() {
     setConvos([]);
     setHandle("");
     setAppPassword("");
+    setPdsUrl("https://bsky.social");
     setState("login");
   }
 
@@ -429,6 +431,18 @@ export function App() {
               placeholder="Your Bluesky password"
               value={appPassword}
               onInput={(e) => setAppPassword(e.currentTarget.value)}
+            />
+
+            <label for="pds-input">
+              PDS URL{" "}
+              <span class="hint">(for private servers; default is bsky.social)</span>
+            </label>
+            <input
+              id="pds-input"
+              type="text"
+              placeholder="https://bsky.social"
+              value={pdsUrl}
+              onInput={(e) => setPdsUrl(e.currentTarget.value)}
             />
 
             <button type="submit">Sign in</button>
