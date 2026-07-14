@@ -386,8 +386,29 @@ export function Graph({ result, convoId, onBack }: Props) {
           });
         }
         scores.sort((a, b) => b.sim - a.sim);
-        const highlighted = new Set(scores.slice(0, 5).map((s) => s.i));
+        const top = scores.slice(0, 5).filter((s) => s.sim > 0);
+        const highlighted = new Set(top.map((s) => s.i));
         setHighlightedIds(highlighted);
+
+        // Return message-level results from top clusters
+        const ranked: {msg: StoredMessage; score: number; matchTerms?: string[]}[] = [];
+        const seen = new Set<string>();
+        for (const { i } of top) {
+          let msgs = nodes[i].cluster.messageIds
+            .map((mid) => msgCacheRef.current.get(mid))
+            .filter((m): m is StoredMessage => !!m?.embedding);
+          if (posterDid) msgs = msgs.filter((m) => m.senderDid === posterDid);
+          for (const m of msgs) {
+            if (seen.has(m.id)) continue;
+            seen.add(m.id);
+            ranked.push({
+              msg: m,
+              score: cosineSim(queryVec, new Float32Array(m.embedding!)),
+            });
+          }
+        }
+        ranked.sort((a, b) => b.score - a.score);
+        msgResults = ranked.slice(0, 20);
       }
       setSearchResults(msgResults);
     } catch {
