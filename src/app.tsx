@@ -404,7 +404,16 @@ export function App() {
     return (
       <main>
         <div class="container login-container">
-          <div class="logo">~</div>
+          <div class="logo">
+            <svg viewBox="0 0 48 48" width="48" height="48">
+              <circle cx="24" cy="14" r="6" fill="#4a9eff" opacity="0.9"/>
+              <circle cx="14" cy="32" r="5" fill="#7c5cfc" opacity="0.8"/>
+              <circle cx="34" cy="32" r="7" fill="#4a9eff" opacity="0.9"/>
+              <line x1="24" y1="20" x2="17" y2="28" stroke="#6b7b8d" stroke-width="2"/>
+              <line x1="24" y1="20" x2="32" y2="26" stroke="#6b7b8d" stroke-width="2"/>
+              <line x1="17" y1="35" x2="28" y2="36" stroke="#6b7b8d" stroke-width="2"/>
+            </svg>
+          </div>
           <h1>Bluesky Chat Mapper</h1>
           <p class="subtitle">
             Visualize your group chats as interactive mindmaps.
