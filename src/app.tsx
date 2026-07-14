@@ -451,8 +451,8 @@ export function App() {
           {error && <p class="error">{error}</p>}
 
           <p class="footer-note">
-            Your credentials are only sent to Bluesky. Nothing is stored on our
-            servers.
+            This is a static web app — your credentials go directly to your
+            PDS. Nothing leaves your browser.
           </p>
         </div>
       </main>
