@@ -492,7 +492,7 @@ header h1 {
   align-items: center;
 }
 
-.graph-search input {
+.graph-search > input {
   flex: 1;
   min-width: 0;
 }
@@ -560,6 +560,13 @@ header h1 {
 
   .graph-search {
     padding: 0;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .graph-search > input {
+    flex: none;
+    width: 100%;
   }
 }
 
@@ -654,6 +661,8 @@ header h1 {
   font-size: 0.85rem;
   color: var(--text-muted);
   cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .search-mode-label input {
