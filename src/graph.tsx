@@ -32,7 +32,7 @@ interface SimLink extends d3Force.SimulationLinkDatum<SimNode> {
 
 export function Graph({ result, convoId, onBack }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [clusterMessages, setClusterMessages] = useState<StoredMessage[]>([]);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -107,6 +107,14 @@ export function Graph({ result, convoId, onBack }: Props) {
         })),
     [result.similarities, nodes],
   );
+
+  const selectedClusters = useMemo(() => {
+    const out: TopicCluster[] = [];
+    for (const id of selectedIds) {
+      if (nodes[id]) out.push(nodes[id].cluster);
+    }
+    return out;
+  }, [selectedIds, nodes]);
 
   // Run force simulation
   useEffect(() => {
@@ -195,7 +203,12 @@ export function Graph({ result, convoId, onBack }: Props) {
       .join("g")
       .attr("cursor", "pointer")
       .on("click", (_event: MouseEvent, d: SimNode) => {
-        setSelectedId((prev) => (prev === d.id ? null : d.id));
+        setSelectedIds((prev) => {
+          const next = new Set(prev);
+          if (next.has(d.id)) next.delete(d.id);
+          else next.add(d.id);
+          return next;
+        });
       });
 
     node.append("circle")
@@ -282,30 +295,43 @@ export function Graph({ result, convoId, onBack }: Props) {
 
   // Fetch cluster messages when selection changes
   useEffect(() => {
-    if (selectedId == null) {
+    if (selectedClusters.length === 0) {
       setClusterMessages([]);
       return;
     }
-    const cluster = nodes[selectedId]?.cluster;
-    if (!cluster) return;
     setLoadingMessages(true);
-    getMessagesByIds(cluster.messageIds).then((msgs) => {
-      // Find top 5 messages closest to centroid (representative samples)
-      const centroid = new Float32Array(cluster.centroid);
-      const ranked = msgs
-        .filter((m) => m.embedding)
-        .map((m) => ({
-          msg: m,
-          sim: cosineSim(new Float32Array(m.embedding!), centroid),
-        }))
-        .sort((a, b) => b.sim - a.sim);
-      setClusterMessages(ranked.slice(0, 5).map((r) => r.msg));
+    const allIds = new Set<string>();
+    for (const c of selectedClusters) {
+      for (const mid of c.messageIds) allIds.add(mid);
+    }
+    getMessagesByIds([...allIds]).then((msgs) => {
+      // Show up to 5 per cluster, deduped
+      const seen = new Set<string>();
+      const combined: StoredMessage[] = [];
+      for (const c of selectedClusters) {
+        const centroid = new Float32Array(c.centroid);
+        const clusterMsgs = msgs
+          .filter((m) => m.embedding && c.messageIds.includes(m.id))
+          .map((m) => ({
+            msg: m,
+            sim: cosineSim(new Float32Array(m.embedding!), centroid),
+          }))
+          .sort((a, b) => b.sim - a.sim);
+        for (const { msg } of clusterMsgs) {
+          if (combined.length >= 5 * selectedClusters.length) break;
+          if (!seen.has(msg.id)) {
+            seen.add(msg.id);
+            combined.push(msg);
+          }
+        }
+      }
+      setClusterMessages(combined);
     }).catch(() => {
       // Ignore errors
     }).finally(() => {
       setLoadingMessages(false);
     });
-  }, [selectedId, result.clusters]);
+  }, [selectedIds, result.clusters]);
 
   // Search
   async function handleSearch() {
@@ -384,10 +410,6 @@ export function Graph({ result, convoId, onBack }: Props) {
     const hue = (i / total) * 280 + 180;
     return `hsl(${hue}, 60%, 55%)`;
   }
-
-  const selectedCluster = selectedId != null
-    ? (nodes[selectedId]?.cluster ?? null)
-    : null;
 
   const totalMessages = result.clusters.reduce((s, c) => s + c.size, 0);
 
@@ -487,12 +509,12 @@ export function Graph({ result, convoId, onBack }: Props) {
         <svg ref={svgRef} class="graph-svg" />
 
         {/* Sidebar */}
-        {selectedCluster && (
+        {selectedClusters.length > 0 && (
           <div class="graph-sidebar">
-            <h3>{selectedCluster.label}</h3>
+            <h3>{selectedClusters.map((c) => c.label).join(" · ")}</h3>
             <p class="sidebar-meta">
-              {selectedCluster.size} messages ·{" "}
-              {Math.round((selectedCluster.size / totalMessages) * 100)}%
+              {selectedClusters.reduce((s, c) => s + c.size, 0)} messages across {selectedClusters.length} cluster{selectedClusters.length > 1 ? "s" : ""} ·{" "}
+              {Math.round((selectedClusters.reduce((s, c) => s + c.size, 0) / totalMessages) * 100)}%
             </p>
             {loadingMessages && (
               <p class="sidebar-loading">Loading messages…</p>
@@ -514,7 +536,7 @@ export function Graph({ result, convoId, onBack }: Props) {
         )}
 
         {/* Search results panel (when no cluster selected) */}
-        {!selectedCluster && searchResults.length > 0 && (
+        {selectedClusters.length === 0 && searchResults.length > 0 && (
           <div class="graph-sidebar">
             <h3>🔍 Search results</h3>
             <p class="sidebar-meta">{searchResults.length} matches</p>
