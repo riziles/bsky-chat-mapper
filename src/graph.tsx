@@ -50,17 +50,9 @@ export function Graph({ result, convoId, onBack }: Props) {
   const [showPosterDropdown, setShowPosterDropdown] = useState(false);
   const [activePosterIdx, setActivePosterIdx] = useState(-1);
   const posterInputRef = useRef<HTMLInputElement>(null);
+  const [posterDid, setPosterDid] = useState<string | null>(null);
   const [graphMode, setGraphMode] = useState<"force" | "timeline" | "none">("force");
   const miniReady = useRef(false);
-
-  // Resolve posterFilter text (display name or handle) to sender DID
-  const posterDid = useMemo(() => {
-    if (!posterFilter.trim()) return null;
-    const q = posterFilter.trim().toLowerCase();
-    return senders.find(
-      (s) => s.displayName.toLowerCase() === q || s.handle.toLowerCase() === q || s.did === q,
-    )?.did ?? null;
-  }, [posterFilter, senders]);
 
   // Filtered senders for autocomplete dropdown
   const filteredSenders = useMemo(() => {
@@ -75,6 +67,7 @@ export function Graph({ result, convoId, onBack }: Props) {
 
   function selectPoster(s: { did: string; displayName: string; handle: string }) {
     setPosterFilter(s.displayName || s.handle);
+    setPosterDid(s.did);
     setShowPosterDropdown(false);
     setActivePosterIdx(-1);
   }
@@ -553,9 +546,20 @@ export function Graph({ result, convoId, onBack }: Props) {
             placeholder="Filter by poster…"
             value={posterFilter}
             onInput={(e) => {
-              setPosterFilter(e.currentTarget.value);
+              const val = e.currentTarget.value;
+              setPosterFilter(val);
               setShowPosterDropdown(true);
               setActivePosterIdx(-1);
+              // Resolve DID from typed text; null if no exact match
+              if (!val.trim()) {
+                setPosterDid(null);
+              } else {
+                const q = val.trim().toLowerCase();
+                const match = senders.find(
+                  (s) => s.displayName.toLowerCase() === q || s.handle.toLowerCase() === q || s.did === q,
+                );
+                setPosterDid(match?.did ?? null);
+              }
             }}
             onFocus={() => setShowPosterDropdown(true)}
             onBlur={() => setTimeout(() => setShowPosterDropdown(false), 150)}
@@ -605,6 +609,7 @@ export function Graph({ result, convoId, onBack }: Props) {
               class="clear-poster"
               onClick={() => {
                 setPosterFilter("");
+                setPosterDid(null);
                 setActivePosterIdx(-1);
               }}
               title="Clear poster filter"
@@ -622,6 +627,7 @@ export function Graph({ result, convoId, onBack }: Props) {
             onClick={() => {
               setSearchQuery("");
               setPosterFilter("");
+              setPosterDid(null);
               setHighlightedIds(new Set());
               setSearchResults([]);
             }}
