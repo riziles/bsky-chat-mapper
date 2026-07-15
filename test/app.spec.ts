@@ -115,4 +115,127 @@ test.describe("Bluesky Chat Mapper", () => {
     await expect(page.locator("h1")).toHaveText("Bluesky Chat Mapper", { timeout: 5000 });
     await expect(page.locator("input[placeholder*='alice']")).toBeVisible();
   });
+
+  // -----------------------------------------------------------------------
+  // 5 — Mode switching: Force Graph → Timeline → None
+  // -----------------------------------------------------------------------
+  test("mode switching between Force Graph, Timeline, and None", async ({ page }) => {
+    await mockApiRoutes(page);
+    await page.goto(BASE);
+
+    await page.fill("input[placeholder*='alice']", "alice.bsky.social");
+    await page.fill("input[placeholder*='password']", "hunter2");
+    await page.click("button:has-text('Sign in')");
+    await expect(page.locator(".convo-item").first()).toBeVisible({ timeout: 10000 });
+    await page.locator(".convo-item").first().click();
+    await page.selectOption("select", "all");
+    await page.locator("button:has-text('Start')").click();
+    const genMapBtn = page.locator("button:has-text('Generate Map')");
+    await expect(genMapBtn).toBeVisible({ timeout: 60000 });
+    await genMapBtn.click();
+    await expect(page.locator(".graph-svg g circle").first()).toBeVisible({ timeout: 30000 });
+
+    // Force Graph is default — minimap strip visible below
+    await expect(page.locator(".minimap")).toBeVisible();
+
+    // Switch to Timeline mode
+    await page.selectOption(".graph-mode-select", "timeline");
+    await expect(page.locator(".graph-svg")).not.toBeVisible();
+    await expect(page.locator(".timeline-full")).toBeVisible();
+
+    // Switch to None
+    await page.selectOption(".graph-mode-select", "none");
+    await expect(page.locator(".graph-svg")).not.toBeVisible();
+    await expect(page.locator(".timeline-full")).not.toBeVisible();
+
+    // Switch back to Force Graph
+    await page.selectOption(".graph-mode-select", "force");
+    await expect(page.locator(".graph-svg g circle").first()).toBeVisible({ timeout: 5000 });
+  });
+
+  // -----------------------------------------------------------------------
+  // 6 — Minimap click → sidebar, multi-select, and Deselect all
+  // -----------------------------------------------------------------------
+  test("minimap click, multi-select, and deselect all", async ({ page }) => {
+    await mockApiRoutes(page);
+    await page.goto(BASE);
+
+    await page.fill("input[placeholder*='alice']", "alice.bsky.social");
+    await page.fill("input[placeholder*='password']", "hunter2");
+    await page.click("button:has-text('Sign in')");
+    await expect(page.locator(".convo-item").first()).toBeVisible({ timeout: 10000 });
+    await page.locator(".convo-item").first().click();
+    await page.selectOption("select", "all");
+    await page.locator("button:has-text('Start')").click();
+    const genMapBtn = page.locator("button:has-text('Generate Map')");
+    await expect(genMapBtn).toBeVisible({ timeout: 60000 });
+    await genMapBtn.click();
+    await expect(page.locator(".graph-svg g circle").first()).toBeVisible({ timeout: 30000 });
+
+    // Click a minimap bar (the first rect in the minimap strip)
+    const minimapRect = page.locator(".minimap svg rect").first();
+    await expect(minimapRect).toBeVisible({ timeout: 5000 });
+    await minimapRect.click();
+
+    // Sidebar should open showing the selected cluster
+    const sidebar = page.locator(".graph-sidebar");
+    await expect(sidebar).toBeVisible({ timeout: 5000 });
+
+    // Click a second minimap rect (different color/cluster)
+    const allMinimapRects = page.locator(".minimap svg rect");
+    const rects = await allMinimapRects.all();
+    const firstFill = await rects[0].getAttribute("fill");
+    let secondRect = null;
+    for (const r of rects) {
+      if ((await r.getAttribute("fill")) !== firstFill) {
+        secondRect = r;
+        break;
+      }
+    }
+    if (secondRect) {
+      await secondRect.click();
+      // Two clusters selected — label should contain " · "
+      await expect(sidebar.locator("h3")).toContainText(" · ", { timeout: 3000 });
+    }
+
+    // Click Deselect all
+    const deselectBtn = page.locator("button:has-text('Deselect all')");
+    await expect(deselectBtn).toBeVisible();
+    await deselectBtn.click();
+    await expect(sidebar).not.toBeVisible({ timeout: 3000 });
+  });
+
+  // -----------------------------------------------------------------------
+  // 7 — Semantic search returns message results
+  // -----------------------------------------------------------------------
+  test("semantic search shows message results", async ({ page }) => {
+    await mockApiRoutes(page);
+    await page.goto(BASE);
+
+    await page.fill("input[placeholder*='alice']", "alice.bsky.social");
+    await page.fill("input[placeholder*='password']", "hunter2");
+    await page.click("button:has-text('Sign in')");
+    await expect(page.locator(".convo-item").first()).toBeVisible({ timeout: 10000 });
+    await page.locator(".convo-item").first().click();
+    await page.selectOption("select", "all");
+    await page.locator("button:has-text('Start')").click();
+    const genMapBtn = page.locator("button:has-text('Generate Map')");
+    await expect(genMapBtn).toBeVisible({ timeout: 60000 });
+    await genMapBtn.click();
+    await expect(page.locator(".graph-svg g circle").first()).toBeVisible({ timeout: 30000 });
+
+    // Semantic mode is default — search for travel content
+    const searchInput = page.locator('input[placeholder="Search clusters..."]');
+    await searchInput.fill("travel");
+    await page.click("button:has-text('Search')");
+
+    // Results should appear in sidebar
+    const sidebarMeta = page.locator(".sidebar-meta");
+    await expect(sidebarMeta).toBeVisible({ timeout: 10000 });
+    await expect(sidebarMeta).toContainText("match");
+
+    // Should have message-level results (not just cluster highlights)
+    const sidebarMsgs = page.locator(".sidebar-msg");
+    await expect(sidebarMsgs.first()).toBeVisible({ timeout: 5000 });
+  });
 });
