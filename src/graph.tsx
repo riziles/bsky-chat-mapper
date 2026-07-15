@@ -626,6 +626,7 @@ export function Graph({ result, convoId, onBack }: Props) {
                   <li key={m.id} class="sidebar-msg">
                     <div class="sidebar-msg-sender">{m.senderDisplayName || m.senderHandle || "unknown"}</div>
                     <div class="sidebar-msg-text">{safeText(m.text).slice(0, 140)}{m.text.length > 140 ? "…" : ""}</div>
+                    <div class="sidebar-msg-time">{new Date(m.sentAt).toLocaleString()}</div>
                   </li>
                 ))}
               </ul>
