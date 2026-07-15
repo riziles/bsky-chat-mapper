@@ -296,7 +296,7 @@ export function Graph({ result, convoId, onBack }: Props) {
       simulation.stop();
       resizeObserver.disconnect();
     };
-  }, [nodes, links]);
+  }, [nodes, links, showGraph]);
 
   // Update node highlights without recreating the graph
   useEffect(() => {
