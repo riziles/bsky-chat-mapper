@@ -13,6 +13,7 @@ interface Props {
   result: ClusterResult;
   convoId: string;
   onBack: () => void;
+  onReply?: (messageId: string, text: string) => void;
 }
 
 interface SimNode extends d3Force.SimulationNodeDatum {
@@ -30,7 +31,7 @@ interface SimLink extends d3Force.SimulationLinkDatum<SimNode> {
   sim: number;
 }
 
-export function Graph({ result, convoId, onBack }: Props) {
+export function Graph({ result, convoId, onBack, onReply }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [clusterMessages, setClusterMessages] = useState<StoredMessage[]>([]);
@@ -718,7 +719,12 @@ export function Graph({ result, convoId, onBack }: Props) {
                   <li key={m.id} class="sidebar-msg">
                     <div class="sidebar-msg-sender">{m.senderDisplayName || m.senderHandle || "unknown"}</div>
                     <div class="sidebar-msg-text">{safeText(m.text).slice(0, 140)}{m.text.length > 140 ? "…" : ""}</div>
-                    <div class="sidebar-msg-time">{new Date(m.sentAt).toLocaleString()}</div>
+                    <div class="sidebar-msg-time">
+                      {new Date(m.sentAt).toLocaleString()}
+                      {onReply && (
+                        <button class="reply-btn" onClick={() => onReply(m.id, m.text)}>Reply</button>
+                      )}
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -744,7 +750,12 @@ export function Graph({ result, convoId, onBack }: Props) {
                     )}
                   </div>
                   <div class="sidebar-msg-text">{safeText(r.msg.text).slice(0, 140)}{r.msg.text.length > 140 ? "…" : ""}</div>
-                  <div class="sidebar-msg-time">{new Date(r.msg.sentAt).toLocaleString()}</div>
+                  <div class="sidebar-msg-time">
+                    {new Date(r.msg.sentAt).toLocaleString()}
+                    {onReply && (
+                      <button class="reply-btn" onClick={() => onReply(r.msg.id, r.msg.text)}>Reply</button>
+                    )}
+                  </div>
                 </li>
               ))}
             </ul>
