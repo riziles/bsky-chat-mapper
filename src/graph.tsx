@@ -591,7 +591,7 @@ export function Graph({ result, convoId, onBack }: Props) {
               setSearchResults([]);
             }}
           >
-            Clear
+            Clear Search
           </button>
         )}
       </div>
@@ -608,9 +608,9 @@ export function Graph({ result, convoId, onBack }: Props) {
               <button
                 class="clear-selection"
                 onClick={() => setSelectedIds(new Set())}
-                title="Clear selected clusters"
+                title="Deselect all clusters"
               >
-                ✕
+                Deselect all
               </button>
             </div>
             <p class="sidebar-meta">
