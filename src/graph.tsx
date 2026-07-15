@@ -43,6 +43,7 @@ export function Graph({ result, convoId, onBack }: Props) {
   const simulationRef = useRef<d3Force.Simulation<SimNode, SimLink> | null>(null);
   const miniSearchRef = useRef<MiniSearch | null>(null);
   const msgCacheRef = useRef<Map<string, StoredMessage>>(new Map());
+  const [cacheVersion, setCacheVersion] = useState(0);
   const [searchResults, setSearchResults] = useState<{msg: StoredMessage; score: number; matchTerms?: string[]}[]>([]);
   const [posterFilter, setPosterFilter] = useState("");
   const [senders, setSenders] = useState<{did: string; displayName: string; handle: string}[]>([]);
@@ -84,6 +85,7 @@ export function Graph({ result, convoId, onBack }: Props) {
     miniReady.current = true;
     getEmbeddedMessages(convoId).then((msgs) => {
       for (const m of msgs) msgCacheRef.current.set(m.id, m);
+      setCacheVersion((v) => v + 1);
       const mini = new MiniSearch({
         fields: ["text", "senderDisplayName", "senderHandle"],
         storeFields: ["id"],
@@ -137,7 +139,37 @@ export function Graph({ result, convoId, onBack }: Props) {
     return out;
   }, [selectedIds, nodes]);
 
-  // Run force simulation
+  // Mini-map timeline: message density over time, colored by cluster
+  const timelineBins = useMemo(() => {
+    if (result.clusters.length === 0) return null;
+    // Build clusterId → idx map
+    const clusterIdx = new Map<string, number>();
+    result.clusters.forEach((c, i) => { for (const mid of c.messageIds) clusterIdx.set(mid, i); });
+    // Collect all { time, clusterIdx }
+    const points: { t: number; ci: number }[] = [];
+    for (const c of result.clusters) {
+      for (const mid of c.messageIds) {
+        const msg = msgCacheRef.current.get(mid);
+        if (msg) points.push({ t: new Date(msg.sentAt).getTime(), ci: clusterIdx.get(mid)! });
+      }
+    }
+    points.sort((a, b) => a.t - b.t);
+    if (points.length === 0) return null;
+    const tMin = points[0].t;
+    const tMax = points[points.length - 1].t;
+    const span = tMax - tMin || 1;
+    const numBins = Math.min(80, points.length);
+    const bins: { t: number; counts: number[] }[] = [];
+    for (let i = 0; i < numBins; i++) {
+      const counts = new Array(result.clusters.length).fill(0);
+      bins.push({ t: tMin + (span * (i + 0.5)) / numBins, counts });
+    }
+    for (const p of points) {
+      const binIdx = Math.min(numBins - 1, Math.floor(((p.t - tMin) / span) * numBins));
+      bins[binIdx].counts[p.ci]++;
+    }
+    return { bins, tMin, tMax, numClusters: result.clusters.length };
+  }, [result.clusters, cacheVersion]);
   useEffect(() => {
     if (!svgRef.current || nodes.length === 0) return;
 
@@ -659,6 +691,61 @@ export function Graph({ result, convoId, onBack }: Props) {
           </div>
         )}
       </div>
+
+      {/* Minimap timeline */}
+      {timelineBins && (
+        <div class="minimap">
+          <svg
+            viewBox={`0 0 ${timelineBins.bins.length * 6} 50`}
+            preserveAspectRatio="none"
+            style="width:100%;height:50px"
+          >
+            {timelineBins.bins.map((bin, i) => {
+              const total = bin.counts.reduce((s, v) => s + v, 0);
+              if (total === 0) return null;
+              const maxH = 40;
+              const barW = 5;
+              const pad = 1;
+              let yOff = 5;
+              return bin.counts.map((cnt, ci) => {
+                if (cnt === 0) return null;
+                const h = Math.max(2, (cnt / total) * maxH);
+                const rect = (
+                  <rect
+                    key={`${i}-${ci}`}
+                    x={i * (barW + pad)}
+                    y={yOff}
+                    width={barW}
+                    height={h}
+                    fill={colorScale(ci, timelineBins!.numClusters)}
+                    opacity={selectedIds.size === 0 || selectedIds.has(ci) ? 0.85 : 0.15}
+                    rx={1}
+                  />
+                );
+                yOff += h;
+                return rect;
+              });
+            })}
+            {/* Selected cluster highlight */}
+            {selectedIds.size > 0 && (
+              <rect
+                x={0}
+                y={0}
+                width={timelineBins.bins.length * 6}
+                height={50}
+                fill="none"
+                stroke="#58a6ff"
+                stroke-width={1}
+                rx={3}
+              />
+            )}
+          </svg>
+          <div class="minimap-labels">
+            <span>{new Date(timelineBins.tMin).toLocaleDateString()}</span>
+            <span>{new Date(timelineBins.tMax).toLocaleDateString()}</span>
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       <div class="graph-footer">

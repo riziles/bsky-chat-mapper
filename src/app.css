@@ -743,6 +743,26 @@ header h1 {
   margin-top: 0.5rem;
 }
 
+/* ---- Minimap timeline ---- */
+.minimap {
+  padding: 0 1rem 0.5rem;
+}
+
+.minimap svg {
+  display: block;
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+}
+
+.minimap-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}
+
 /* ---- Message Search ---- */
 .message-search {
   margin-top: 2rem;
