@@ -492,7 +492,7 @@ header h1 {
   align-items: center;
 }
 
-.graph-search input {
+.graph-search > input {
   flex: 1;
   min-width: 0;
 }
@@ -509,6 +509,91 @@ header h1 {
 .graph-search button:hover {
   background: var(--accent);
   color: #fff;
+}
+
+/* ---- Poster filter ---- */
+.poster-filter {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.poster-filter input {
+  width: 150px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.875rem;
+  font-family: var(--font);
+}
+
+.poster-filter input:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.poster-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 0 0 var(--radius) var(--radius);
+  list-style: none;
+  margin: 0;
+  padding: 0.25rem 0;
+  max-height: 200px;
+  overflow-y: auto;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.poster-dropdown li {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  color: var(--text);
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
+.poster-dropdown li:hover,
+.poster-dropdown li.active {
+  background: var(--bg-hover);
+  color: var(--accent);
+}
+
+.handle-hint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.clear-poster {
+  position: absolute;
+  right: 4px;
+  background: none !important;
+  border: none !important;
+  color: var(--text-muted) !important;
+  font-size: 0.75rem;
+  padding: 0 0.25rem !important;
+  cursor: pointer;
+}
+
+.clear-poster:hover {
+  color: var(--text) !important;
+}
+
+@media (max-width: 700px) {
+  .poster-filter input {
+    width: 100%;
+  }
 }
 
 .clear-search {
@@ -560,6 +645,13 @@ header h1 {
 
   .graph-search {
     padding: 0;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .graph-search > input {
+    flex: none;
+    width: 100%;
   }
 }
 
@@ -654,6 +746,8 @@ header h1 {
   font-size: 0.85rem;
   color: var(--text-muted);
   cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .search-mode-label input {

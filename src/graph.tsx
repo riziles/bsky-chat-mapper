@@ -32,7 +32,7 @@ interface SimLink extends d3Force.SimulationLinkDatum<SimNode> {
 
 export function Graph({ result, convoId, onBack }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [clusterMessages, setClusterMessages] = useState<StoredMessage[]>([]);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -44,7 +44,38 @@ export function Graph({ result, convoId, onBack }: Props) {
   const miniSearchRef = useRef<MiniSearch | null>(null);
   const msgCacheRef = useRef<Map<string, StoredMessage>>(new Map());
   const [searchResults, setSearchResults] = useState<{msg: StoredMessage; score: number; matchTerms?: string[]}[]>([]);
+  const [posterFilter, setPosterFilter] = useState("");
+  const [senders, setSenders] = useState<{did: string; displayName: string; handle: string}[]>([]);
+  const [showPosterDropdown, setShowPosterDropdown] = useState(false);
+  const [activePosterIdx, setActivePosterIdx] = useState(-1);
+  const posterInputRef = useRef<HTMLInputElement>(null);
   const miniReady = useRef(false);
+
+  // Resolve posterFilter text (display name or handle) to sender DID
+  const posterDid = useMemo(() => {
+    if (!posterFilter.trim()) return null;
+    const q = posterFilter.trim().toLowerCase();
+    return senders.find(
+      (s) => s.displayName.toLowerCase() === q || s.handle.toLowerCase() === q || s.did === q,
+    )?.did ?? null;
+  }, [posterFilter, senders]);
+
+  // Filtered senders for autocomplete dropdown
+  const filteredSenders = useMemo(() => {
+    if (!posterFilter.trim()) return senders;
+    const q = posterFilter.toLowerCase();
+    return senders.filter(
+      (s) =>
+        s.displayName.toLowerCase().includes(q) ||
+        s.handle.toLowerCase().includes(q),
+    );
+  }, [posterFilter, senders]);
+
+  function selectPoster(s: { did: string; displayName: string; handle: string }) {
+    setPosterFilter(s.displayName || s.handle);
+    setShowPosterDropdown(false);
+    setActivePosterIdx(-1);
+  }
 
   // Build MiniSearch index for fuzzy cluster search
   useEffect(() => {
@@ -59,6 +90,22 @@ export function Graph({ result, convoId, onBack }: Props) {
       });
       mini.addAll(msgs.map((m) => ({ id: m.id, text: m.text, senderDisplayName: m.senderDisplayName ?? "", senderHandle: m.senderHandle ?? "" })));
       miniSearchRef.current = mini;
+
+      // Collect unique senders for autocomplete
+      const seen = new Map<string, {did: string; displayName: string; handle: string}>();
+      for (const m of msgs) {
+        if (seen.has(m.senderDid)) continue;
+        seen.set(m.senderDid, {
+          did: m.senderDid,
+          displayName: m.senderDisplayName ?? "",
+          handle: m.senderHandle ?? "",
+        });
+      }
+      setSenders(
+        Array.from(seen.values()).sort((a, b) =>
+          (a.displayName || a.handle).localeCompare(b.displayName || b.handle),
+        ),
+      );
     }).catch(() => {});
   }, []);
 
@@ -80,6 +127,14 @@ export function Graph({ result, convoId, onBack }: Props) {
         })),
     [result.similarities, nodes],
   );
+
+  const selectedClusters = useMemo(() => {
+    const out: TopicCluster[] = [];
+    for (const id of selectedIds) {
+      if (nodes[id]) out.push(nodes[id].cluster);
+    }
+    return out;
+  }, [selectedIds, nodes]);
 
   // Run force simulation
   useEffect(() => {
@@ -168,7 +223,12 @@ export function Graph({ result, convoId, onBack }: Props) {
       .join("g")
       .attr("cursor", "pointer")
       .on("click", (_event: MouseEvent, d: SimNode) => {
-        setSelectedId((prev) => (prev === d.id ? null : d.id));
+        setSelectedIds((prev) => {
+          const next = new Set(prev);
+          if (next.has(d.id)) next.delete(d.id);
+          else next.add(d.id);
+          return next;
+        });
       });
 
     node.append("circle")
@@ -255,30 +315,43 @@ export function Graph({ result, convoId, onBack }: Props) {
 
   // Fetch cluster messages when selection changes
   useEffect(() => {
-    if (selectedId == null) {
+    if (selectedClusters.length === 0) {
       setClusterMessages([]);
       return;
     }
-    const cluster = nodes[selectedId]?.cluster;
-    if (!cluster) return;
     setLoadingMessages(true);
-    getMessagesByIds(cluster.messageIds).then((msgs) => {
-      // Find top 5 messages closest to centroid (representative samples)
-      const centroid = new Float32Array(cluster.centroid);
-      const ranked = msgs
-        .filter((m) => m.embedding)
-        .map((m) => ({
-          msg: m,
-          sim: cosineSim(new Float32Array(m.embedding!), centroid),
-        }))
-        .sort((a, b) => b.sim - a.sim);
-      setClusterMessages(ranked.slice(0, 5).map((r) => r.msg));
+    const allIds = new Set<string>();
+    for (const c of selectedClusters) {
+      for (const mid of c.messageIds) allIds.add(mid);
+    }
+    getMessagesByIds([...allIds]).then((msgs) => {
+      // Show up to 5 per cluster, deduped
+      const seen = new Set<string>();
+      const combined: StoredMessage[] = [];
+      for (const c of selectedClusters) {
+        const centroid = new Float32Array(c.centroid);
+        const clusterMsgs = msgs
+          .filter((m) => m.embedding && c.messageIds.includes(m.id))
+          .map((m) => ({
+            msg: m,
+            sim: cosineSim(new Float32Array(m.embedding!), centroid),
+          }))
+          .sort((a, b) => b.sim - a.sim);
+        for (const { msg } of clusterMsgs) {
+          if (combined.length >= 5 * selectedClusters.length) break;
+          if (!seen.has(msg.id)) {
+            seen.add(msg.id);
+            combined.push(msg);
+          }
+        }
+      }
+      setClusterMessages(combined);
     }).catch(() => {
       // Ignore errors
     }).finally(() => {
       setLoadingMessages(false);
     });
-  }, [selectedId, result.clusters]);
+  }, [selectedIds, result.clusters]);
 
   // Search
   async function handleSearch() {
@@ -300,25 +373,62 @@ export function Graph({ result, convoId, onBack }: Props) {
           }
         }
         const matchedClusters = new Set<number>();
+        const filtered: typeof hits = [];
         for (const h of hits) {
+          // Apply poster filter if set
+          if (posterDid) {
+            const msg = msgCacheRef.current.get(h.id);
+            if (!msg || msg.senderDid !== posterDid) continue;
+          }
           const cid = clusterByMsg.get(h.id);
           if (cid != null) matchedClusters.add(cid);
+          filtered.push(h);
         }
         setHighlightedIds(matchedClusters);
-        msgResults = hits.slice(0, 20).map((h) => ({
+        msgResults = filtered.slice(0, 20).map((h) => ({
           msg: msgCacheRef.current.get(h.id)!,
           score: h.score,
           matchTerms: Object.keys(h.match).filter((k) => h.match[k].length > 0),
         })).filter((r) => r.msg);
       } else {
         const queryVec = embed(searchQuery.trim());
-        const scores = nodes.map((n, i) => ({
+        let scores = nodes.map((n, i) => ({
           i,
           sim: cosineSim(queryVec, new Float32Array(n.cluster.centroid)),
         }));
+        // If poster filter is active, boost clusters containing messages from that poster
+        if (posterDid) {
+          scores = scores.map((s) => {
+            const hasPosterMsgs = nodes[s.i].cluster.messageIds.some(
+              (mid) => msgCacheRef.current.get(mid)?.senderDid === posterDid,
+            );
+            return { i: s.i, sim: hasPosterMsgs ? s.sim : -1 };
+          });
+        }
         scores.sort((a, b) => b.sim - a.sim);
-        const highlighted = new Set(scores.slice(0, 5).map((s) => s.i));
+        const top = scores.slice(0, 5).filter((s) => s.sim > 0);
+        const highlighted = new Set(top.map((s) => s.i));
         setHighlightedIds(highlighted);
+
+        // Return message-level results from top clusters
+        const ranked: {msg: StoredMessage; score: number; matchTerms?: string[]}[] = [];
+        const seen = new Set<string>();
+        for (const { i } of top) {
+          let msgs = nodes[i].cluster.messageIds
+            .map((mid) => msgCacheRef.current.get(mid))
+            .filter((m): m is StoredMessage => !!m?.embedding);
+          if (posterDid) msgs = msgs.filter((m) => m.senderDid === posterDid);
+          for (const m of msgs) {
+            if (seen.has(m.id)) continue;
+            seen.add(m.id);
+            ranked.push({
+              msg: m,
+              score: cosineSim(queryVec, new Float32Array(m.embedding!)),
+            });
+          }
+        }
+        ranked.sort((a, b) => b.score - a.score);
+        msgResults = ranked.slice(0, 20);
       }
       setSearchResults(msgResults);
     } catch {
@@ -341,10 +451,6 @@ export function Graph({ result, convoId, onBack }: Props) {
     const hue = (i / total) * 280 + 180;
     return `hsl(${hue}, 60%, 55%)`;
   }
-
-  const selectedCluster = selectedId != null
-    ? (nodes[selectedId]?.cluster ?? null)
-    : null;
 
   const totalMessages = result.clusters.reduce((s, c) => s + c.size, 0);
 
@@ -396,6 +502,73 @@ export function Graph({ result, convoId, onBack }: Props) {
           onInput={(e) => setSearchQuery(e.currentTarget.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSearch()}
         />
+        <div class="poster-filter">
+          <input
+            type="text"
+            ref={posterInputRef}
+            placeholder="Filter by poster…"
+            value={posterFilter}
+            onInput={(e) => {
+              setPosterFilter(e.currentTarget.value);
+              setShowPosterDropdown(true);
+              setActivePosterIdx(-1);
+            }}
+            onFocus={() => setShowPosterDropdown(true)}
+            onBlur={() => setTimeout(() => setShowPosterDropdown(false), 150)}
+            onKeyDown={(e) => {
+              if (!showPosterDropdown || filteredSenders.length === 0) return;
+              if (e.key === "ArrowDown") {
+                e.preventDefault();
+                setActivePosterIdx((prev) =>
+                  prev < filteredSenders.length - 1 ? prev + 1 : 0,
+                );
+              } else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                setActivePosterIdx((prev) =>
+                  prev > 0 ? prev - 1 : filteredSenders.length - 1,
+                );
+              } else if (e.key === "Enter" && activePosterIdx >= 0) {
+                e.preventDefault();
+                selectPoster(filteredSenders[activePosterIdx]);
+              } else if (e.key === "Escape") {
+                setShowPosterDropdown(false);
+                setActivePosterIdx(-1);
+              }
+            }}
+          />
+          {showPosterDropdown && filteredSenders.length > 0 && (
+            <ul class="poster-dropdown">
+              {filteredSenders.map((s, i) => (
+                <li
+                  key={s.did}
+                  class={i === activePosterIdx ? "active" : ""}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    selectPoster(s);
+                  }}
+                  onMouseEnter={() => setActivePosterIdx(i)}
+                >
+                  {s.displayName || s.handle}
+                  {s.displayName && s.handle && (
+                    <span class="handle-hint">@{s.handle}</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+          {posterFilter && (
+            <button
+              class="clear-poster"
+              onClick={() => {
+                setPosterFilter("");
+                setActivePosterIdx(-1);
+              }}
+              title="Clear poster filter"
+            >
+              ✕
+            </button>
+          )}
+        </div>
         <button onClick={handleSearch} disabled={searching}>
           {searching ? "…" : "Search"}
         </button>
@@ -404,6 +577,7 @@ export function Graph({ result, convoId, onBack }: Props) {
             class="clear-search"
             onClick={() => {
               setSearchQuery("");
+              setPosterFilter("");
               setHighlightedIds(new Set());
               setSearchResults([]);
             }}
@@ -418,12 +592,12 @@ export function Graph({ result, convoId, onBack }: Props) {
         <svg ref={svgRef} class="graph-svg" />
 
         {/* Sidebar */}
-        {selectedCluster && (
+        {selectedClusters.length > 0 && (
           <div class="graph-sidebar">
-            <h3>{selectedCluster.label}</h3>
+            <h3>{selectedClusters.map((c) => c.label).join(" · ")}</h3>
             <p class="sidebar-meta">
-              {selectedCluster.size} messages ·{" "}
-              {Math.round((selectedCluster.size / totalMessages) * 100)}%
+              {selectedClusters.reduce((s, c) => s + c.size, 0)} messages across {selectedClusters.length} cluster{selectedClusters.length > 1 ? "s" : ""} ·{" "}
+              {Math.round((selectedClusters.reduce((s, c) => s + c.size, 0) / totalMessages) * 100)}%
             </p>
             {loadingMessages && (
               <p class="sidebar-loading">Loading messages…</p>
@@ -445,7 +619,7 @@ export function Graph({ result, convoId, onBack }: Props) {
         )}
 
         {/* Search results panel (when no cluster selected) */}
-        {!selectedCluster && searchResults.length > 0 && (
+        {selectedClusters.length === 0 && searchResults.length > 0 && (
           <div class="graph-sidebar">
             <h3>🔍 Search results</h3>
             <p class="sidebar-meta">{searchResults.length} matches</p>
