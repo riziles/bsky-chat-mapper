@@ -63,3 +63,18 @@ pnpm deploy   # build + push to gh-pages
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+## Ideas / TODO
+
+- [ ] **Conversation minimap** — compact timeline strip showing message density over time, color-coded by cluster
+- [ ] **2D message scatter** — PCA or force-directed reduction of 384-dim embeddings to plot every message as a dot in semantic space
+- [ ] **Reaction heatmap** — aggregate 👍👎😂 etc. per cluster or per poster
+- [ ] **Co-occurrence graph** — edges between posters who reply to each other frequently
+- [ ] **Sentiment arc** — per-cluster sentiment trend line over the conversation timeline
+- [ ] **Topic drift animation** — animate cluster sizes changing as the conversation progresses
+- [ ] **Word cloud per cluster** — replace/in addition to TF-IDF labels
+- [ ] **Export to Markdown / JSON / CSV** — dump filtered results for offline analysis
+- [ ] **Nightly recursive summarization** — (requires LLM on-device, maybe WebGPU someday) recursive topic summaries à la RAPTOR
+- [ ] **Message similarity explorer** — click a message, see its N nearest neighbors across all clusters
+- [ ] **Compare two convos** — load and align two different chats side-by-side
+- [ ] **PWA/offline mode** — service worker caching for full offline use

@@ -43,22 +43,16 @@ export function Graph({ result, convoId, onBack }: Props) {
   const simulationRef = useRef<d3Force.Simulation<SimNode, SimLink> | null>(null);
   const miniSearchRef = useRef<MiniSearch | null>(null);
   const msgCacheRef = useRef<Map<string, StoredMessage>>(new Map());
+  const [cacheVersion, setCacheVersion] = useState(0);
   const [searchResults, setSearchResults] = useState<{msg: StoredMessage; score: number; matchTerms?: string[]}[]>([]);
   const [posterFilter, setPosterFilter] = useState("");
   const [senders, setSenders] = useState<{did: string; displayName: string; handle: string}[]>([]);
   const [showPosterDropdown, setShowPosterDropdown] = useState(false);
   const [activePosterIdx, setActivePosterIdx] = useState(-1);
   const posterInputRef = useRef<HTMLInputElement>(null);
+  const [posterDid, setPosterDid] = useState<string | null>(null);
+  const [graphMode, setGraphMode] = useState<"force" | "timeline" | "none">("force");
   const miniReady = useRef(false);
-
-  // Resolve posterFilter text (display name or handle) to sender DID
-  const posterDid = useMemo(() => {
-    if (!posterFilter.trim()) return null;
-    const q = posterFilter.trim().toLowerCase();
-    return senders.find(
-      (s) => s.displayName.toLowerCase() === q || s.handle.toLowerCase() === q || s.did === q,
-    )?.did ?? null;
-  }, [posterFilter, senders]);
 
   // Filtered senders for autocomplete dropdown
   const filteredSenders = useMemo(() => {
@@ -73,6 +67,7 @@ export function Graph({ result, convoId, onBack }: Props) {
 
   function selectPoster(s: { did: string; displayName: string; handle: string }) {
     setPosterFilter(s.displayName || s.handle);
+    setPosterDid(s.did);
     setShowPosterDropdown(false);
     setActivePosterIdx(-1);
   }
@@ -83,6 +78,7 @@ export function Graph({ result, convoId, onBack }: Props) {
     miniReady.current = true;
     getEmbeddedMessages(convoId).then((msgs) => {
       for (const m of msgs) msgCacheRef.current.set(m.id, m);
+      setCacheVersion((v) => v + 1);
       const mini = new MiniSearch({
         fields: ["text", "senderDisplayName", "senderHandle"],
         storeFields: ["id"],
@@ -136,7 +132,37 @@ export function Graph({ result, convoId, onBack }: Props) {
     return out;
   }, [selectedIds, nodes]);
 
-  // Run force simulation
+  // Mini-map timeline: message density over time, colored by cluster
+  const timelineBins = useMemo(() => {
+    if (result.clusters.length === 0) return null;
+    // Build clusterId → idx map
+    const clusterIdx = new Map<string, number>();
+    result.clusters.forEach((c, i) => { for (const mid of c.messageIds) clusterIdx.set(mid, i); });
+    // Collect all { time, clusterIdx }
+    const points: { t: number; ci: number }[] = [];
+    for (const c of result.clusters) {
+      for (const mid of c.messageIds) {
+        const msg = msgCacheRef.current.get(mid);
+        if (msg) points.push({ t: new Date(msg.sentAt).getTime(), ci: clusterIdx.get(mid)! });
+      }
+    }
+    points.sort((a, b) => a.t - b.t);
+    if (points.length === 0) return null;
+    const tMin = points[0].t;
+    const tMax = points[points.length - 1].t;
+    const span = tMax - tMin || 1;
+    const numBins = Math.min(80, points.length);
+    const bins: { t: number; counts: number[] }[] = [];
+    for (let i = 0; i < numBins; i++) {
+      const counts = new Array(result.clusters.length).fill(0);
+      bins.push({ t: tMin + (span * (i + 0.5)) / numBins, counts });
+    }
+    for (const p of points) {
+      const binIdx = Math.min(numBins - 1, Math.floor(((p.t - tMin) / span) * numBins));
+      bins[binIdx].counts[p.ci]++;
+    }
+    return { bins, tMin, tMax, numClusters: result.clusters.length };
+  }, [result.clusters, cacheVersion]);
   useEffect(() => {
     if (!svgRef.current || nodes.length === 0) return;
 
@@ -295,7 +321,7 @@ export function Graph({ result, convoId, onBack }: Props) {
       simulation.stop();
       resizeObserver.disconnect();
     };
-  }, [nodes, links]);
+  }, [nodes, links, graphMode]);
 
   // Update node highlights without recreating the graph
   useEffect(() => {
@@ -481,6 +507,17 @@ export function Graph({ result, convoId, onBack }: Props) {
             />
             Fuzzy
           </label>
+          <label class="search-mode-label graph-toggle">
+            <select
+              class="graph-mode-select"
+              value={graphMode}
+              onChange={(e) => setGraphMode(e.currentTarget.value as "force" | "timeline" | "none")}
+            >
+              <option value="force">Force Graph</option>
+              <option value="timeline">Timeline</option>
+              <option value="none">None</option>
+            </select>
+          </label>
           {searchMode === "fuzzy" && (
             <label class="fuzzy-slider">
               <span>Fuzziness: {fuzzyLevel.toFixed(2)}</span>
@@ -509,9 +546,20 @@ export function Graph({ result, convoId, onBack }: Props) {
             placeholder="Filter by poster…"
             value={posterFilter}
             onInput={(e) => {
-              setPosterFilter(e.currentTarget.value);
+              const val = e.currentTarget.value;
+              setPosterFilter(val);
               setShowPosterDropdown(true);
               setActivePosterIdx(-1);
+              // Resolve DID from typed text; null if no exact match
+              if (!val.trim()) {
+                setPosterDid(null);
+              } else {
+                const q = val.trim().toLowerCase();
+                const match = senders.find(
+                  (s) => s.displayName.toLowerCase() === q || s.handle.toLowerCase() === q || s.did === q,
+                );
+                setPosterDid(match?.did ?? null);
+              }
             }}
             onFocus={() => setShowPosterDropdown(true)}
             onBlur={() => setTimeout(() => setShowPosterDropdown(false), 150)}
@@ -561,6 +609,7 @@ export function Graph({ result, convoId, onBack }: Props) {
               class="clear-poster"
               onClick={() => {
                 setPosterFilter("");
+                setPosterDid(null);
                 setActivePosterIdx(-1);
               }}
               title="Clear poster filter"
@@ -578,23 +627,84 @@ export function Graph({ result, convoId, onBack }: Props) {
             onClick={() => {
               setSearchQuery("");
               setPosterFilter("");
+              setPosterDid(null);
               setHighlightedIds(new Set());
               setSearchResults([]);
             }}
           >
-            Clear
+            Clear Search
           </button>
         )}
       </div>
 
       {/* Graph + sidebar */}
       <div class="graph-layout">
-        <svg ref={svgRef} class="graph-svg" />
+        {graphMode === "force" && <svg ref={svgRef} class="graph-svg" />}
+        {graphMode === "timeline" && timelineBins && (
+          <div class="timeline-full">
+            <svg
+              viewBox={`0 0 ${timelineBins.bins.length * 6} 100`}
+              preserveAspectRatio="none"
+              style="width:100%;min-height:400px"
+            >
+              {timelineBins.bins.map((bin, i) => {
+                const total = bin.counts.reduce((s, v) => s + v, 0);
+                if (total === 0) return null;
+                const maxH = 88;
+                const barW = 5;
+                const pad = 1;
+                let yOff = 6;
+                return bin.counts.map((cnt, ci) => {
+                  if (cnt === 0) return null;
+                  const h = Math.max(2, (cnt / total) * maxH);
+                  const rect = (
+                    <rect
+                      key={`tl-${i}-${ci}`}
+                      x={i * (barW + pad)}
+                      y={yOff}
+                      width={barW}
+                      height={h}
+                      fill={colorScale(ci, timelineBins!.numClusters)}
+                      opacity={selectedIds.size === 0 || selectedIds.has(ci) ? 0.85 : 0.15}
+                      rx={1}
+                      style="cursor:pointer"
+                      onClick={() => {
+                        setSelectedIds((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(ci)) next.delete(ci);
+                          else next.add(ci);
+                          return next;
+                        });
+                      }}
+                    >
+                      <title>{result.clusters[ci].label} · {cnt} msg{cnt > 1 ? "s" : ""} · {new Date(bin.t).toLocaleDateString()}</title>
+                    </rect>
+                  );
+                  yOff += h;
+                  return rect;
+                });
+              })}
+            </svg>
+            <div class="minimap-labels">
+              <span>{new Date(timelineBins.tMin).toLocaleDateString()}</span>
+              <span>{new Date(timelineBins.tMax).toLocaleDateString()}</span>
+            </div>
+          </div>
+        )}
 
         {/* Sidebar */}
         {selectedClusters.length > 0 && (
           <div class="graph-sidebar">
-            <h3>{selectedClusters.map((c) => c.label).join(" · ")}</h3>
+            <div class="sidebar-header">
+              <h3>{selectedClusters.map((c) => c.label).join(" · ")}</h3>
+              <button
+                class="clear-selection"
+                onClick={() => setSelectedIds(new Set())}
+                title="Deselect all clusters"
+              >
+                Deselect all
+              </button>
+            </div>
             <p class="sidebar-meta">
               {selectedClusters.reduce((s, c) => s + c.size, 0)} messages across {selectedClusters.length} cluster{selectedClusters.length > 1 ? "s" : ""} ·{" "}
               {Math.round((selectedClusters.reduce((s, c) => s + c.size, 0) / totalMessages) * 100)}%
@@ -608,6 +718,7 @@ export function Graph({ result, convoId, onBack }: Props) {
                   <li key={m.id} class="sidebar-msg">
                     <div class="sidebar-msg-sender">{m.senderDisplayName || m.senderHandle || "unknown"}</div>
                     <div class="sidebar-msg-text">{safeText(m.text).slice(0, 140)}{m.text.length > 140 ? "…" : ""}</div>
+                    <div class="sidebar-msg-time">{new Date(m.sentAt).toLocaleString()}</div>
                   </li>
                 ))}
               </ul>
@@ -640,6 +751,70 @@ export function Graph({ result, convoId, onBack }: Props) {
           </div>
         )}
       </div>
+
+      {/* Minimap strip (only in force graph mode) */}
+      {graphMode === "force" && timelineBins && (
+        <div class="minimap">
+          <svg
+            viewBox={`0 0 ${timelineBins.bins.length * 6} 50`}
+            preserveAspectRatio="none"
+            style="width:100%;height:50px"
+          >
+            {timelineBins.bins.map((bin, i) => {
+              const total = bin.counts.reduce((s, v) => s + v, 0);
+              if (total === 0) return null;
+              const maxH = 40;
+              const barW = 5;
+              const pad = 1;
+              let yOff = 5;
+              return bin.counts.map((cnt, ci) => {
+                if (cnt === 0) return null;
+                const h = Math.max(2, (cnt / total) * maxH);
+                const rect = (
+                  <rect
+                    key={`mm-${i}-${ci}`}
+                    x={i * (barW + pad)}
+                    y={yOff}
+                    width={barW}
+                    height={h}
+                    fill={colorScale(ci, timelineBins!.numClusters)}
+                    opacity={selectedIds.size === 0 || selectedIds.has(ci) ? 0.85 : 0.15}
+                    rx={1}
+                    style="cursor:pointer"
+                    onClick={() => {
+                      setSelectedIds((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(ci)) next.delete(ci);
+                        else next.add(ci);
+                        return next;
+                      });
+                    }}
+                  />
+                );
+                yOff += h;
+                return rect;
+              });
+            })}
+            {/* Selected cluster highlight */}
+            {selectedIds.size > 0 && (
+              <rect
+                x={0}
+                y={0}
+                width={timelineBins.bins.length * 6}
+                height={50}
+                fill="none"
+                stroke="#58a6ff"
+                stroke-width={1}
+                rx={3}
+              />
+            )}
+          </svg>
+          <div class="minimap-labels">
+            <span>{new Date(timelineBins.tMin).toLocaleDateString()}</span>
+            <span>{new Date(timelineBins.tMax).toLocaleDateString()}</span>
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       <div class="graph-footer">

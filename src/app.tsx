@@ -194,16 +194,6 @@ export function App() {
         setFetchedMsgs([]);
       }
 
-      // Build the set of already-stored message IDs for early stopping
-      const storedIds = existing
-        ? new Set(
-            (await getMessagesForConvo(selectedConvo.id)).map((m) => {
-              const parts = m.id.split(":");
-              return parts[parts.length - 1];
-            }),
-          )
-        : new Set<string>();
-
       const before = timeRangeToDate(timeRange, customDays);
 
       const msgs = await fetchMessages(a, selectedConvo.id, {
@@ -211,10 +201,6 @@ export function App() {
         signal: controller.signal,
         onProgress(p) {
           setFetchProgress(p.done ? p : { ...p });
-        },
-        stopWhen(ids) {
-          // Stop early if we've reached messages we already have
-          return ids.some((id) => storedIds.has(id));
         },
       });
 
