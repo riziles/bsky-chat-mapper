@@ -11,6 +11,10 @@ A static web app that pulls your Bluesky group chat history, generates semantic 
 - **On-device semantic embeddings** via [Ternlight](https://github.com/tern-light/ternlight) (runs entirely in your browser)
 - **TF-IDF topic clustering** with chronological proximity and reply-chain awareness
 - **Interactive D3 force graph** with draggable nodes, zoom, and cluster search
+- **Timeline minimap** — stacked colored bars showing message density over time; clickable to select clusters
+- **Three view modes**: Force Graph, Timeline, or None (sidebar-only)
+- **Multi-select** — click multiple clusters to compare topics side-by-side
+- **Poster filter** — autocomplete dropdown to filter by sender, with keyboard navigation
 - **Dual-mode search**: semantic (meaning-based) and fuzzy text (typo-tolerant) via [MiniSearch](https://github.com/lucaong/minisearch)
 - **IndexedDB persistence** — subsequent visits only pull new messages
 
@@ -66,7 +70,7 @@ MIT — see [LICENSE](LICENSE).
 
 ## Ideas / TODO
 
-- [ ] **Conversation minimap** — compact timeline strip showing message density over time, color-coded by cluster
+- [x] **Conversation minimap** — compact timeline strip showing message density over time, color-coded by cluster
 - [ ] **2D message scatter** — PCA or force-directed reduction of 384-dim embeddings to plot every message as a dot in semantic space
 - [ ] **Reaction heatmap** — aggregate 👍👎😂 etc. per cluster or per poster
 - [ ] **Co-occurrence graph** — edges between posters who reply to each other frequently

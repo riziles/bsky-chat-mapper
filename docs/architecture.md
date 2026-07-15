@@ -33,6 +33,8 @@ A static web app that connects to Bluesky via password auth, pulls a single grou
 │  2. List group chats → pick one                     │
 │  3. Set time filter (default 7 days)                │
 │  4. Click Start → pull → embed → cluster → map      │
+│  5. Explore: force graph, timeline, multi-select,   │
+│     poster filter, semantic/fuzzy search            │
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -117,19 +119,47 @@ D3 force simulation with:
 ### Search on the graph
 
 - **Semantic mode**: embeds query with Ternlight, highlights top 5 clusters
-  by cosine similarity to centroid
+  by cosine similarity and returns ranked message-level results in the sidebar
+  (scored individually against the query embedding)
 - **Fuzzy mode**: MiniSearch ranks all messages, maps hits back to their
   containing clusters for highlighting; shows message-level results in
   sidebar with timestamps and match terms
 - Fuzziness slider: 0.0–0.4 (controls MiniSearch edit distance)
 
+### Poster filter
+
+- Custom autocomplete dropdown (no `<datalist>` — works on Firefox Android)
+- Filters search results by sender DID
+- Arrow key navigation + Enter to select, Escape to close
+- Shows `@handle` hint when display name differs from handle
+
+### Graph view modes
+
+Three-mode dropdown replaces the old on/off toggle:
+- **Force Graph** — D3 bubbles with minimap strip below
+- **Timeline** — full-height stacked bars with date labels and hover tooltips
+- **None** — sidebar expands to full width
+
+### Timeline minimap
+
+- Compact strip below the force graph, or full view in timeline mode
+- Messages bucketed by time (up to 80 bins), stacked by cluster color
+- Click any colored bar to select/deselect that cluster (same as clicking a node)
+- Selected clusters highlight; unselected dim to 15% opacity
+- Date labels on each end
+
+### Multi-select & Deselect
+
+- Click cluster nodes or minimap bars to add to selection (toggle on/off)
+- Sidebar aggregates messages from all selected clusters, deduplicated
+- "Deselect all" button in sidebar header clears selection
+- Timestamps shown on all messages regardless of source
+
 ## Search (per-message)
 
-Dual-mode search on the cluster results page:
-- **Fuzzy text**: MiniSearch with typo tolerance, shows top 20 messages with
-  match terms and relevance scores
-- **Semantic**: embeds query with Ternlight, cosine similarity ranking of
-  all stored message embeddings
+> **Note:** Standalone per-message search was removed in favor of the
+> integrated graph search sidebar, which provides both semantic and fuzzy
+> search with message-level results directly on the map/timeline page.
 
 ## Data Model
 
