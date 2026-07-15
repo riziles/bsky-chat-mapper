@@ -667,6 +667,15 @@ export function Graph({ result, convoId, onBack }: Props) {
                       fill={colorScale(ci, timelineBins!.numClusters)}
                       opacity={selectedIds.size === 0 || selectedIds.has(ci) ? 0.85 : 0.15}
                       rx={1}
+                      style="cursor:pointer"
+                      onClick={() => {
+                        setSelectedIds((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(ci)) next.delete(ci);
+                          else next.add(ci);
+                          return next;
+                        });
+                      }}
                     >
                       <title>{result.clusters[ci].label} · {cnt} msg{cnt > 1 ? "s" : ""} · {new Date(bin.t).toLocaleDateString()}</title>
                     </rect>
@@ -771,6 +780,15 @@ export function Graph({ result, convoId, onBack }: Props) {
                     fill={colorScale(ci, timelineBins!.numClusters)}
                     opacity={selectedIds.size === 0 || selectedIds.has(ci) ? 0.85 : 0.15}
                     rx={1}
+                    style="cursor:pointer"
+                    onClick={() => {
+                      setSelectedIds((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(ci)) next.delete(ci);
+                        else next.add(ci);
+                        return next;
+                      });
+                    }}
                   />
                 );
                 yOff += h;
