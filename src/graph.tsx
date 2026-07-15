@@ -46,6 +46,9 @@ export function Graph({ result, convoId, onBack }: Props) {
   const [searchResults, setSearchResults] = useState<{msg: StoredMessage; score: number; matchTerms?: string[]}[]>([]);
   const [posterFilter, setPosterFilter] = useState("");
   const [senders, setSenders] = useState<{did: string; displayName: string; handle: string}[]>([]);
+  const [showPosterDropdown, setShowPosterDropdown] = useState(false);
+  const [activePosterIdx, setActivePosterIdx] = useState(-1);
+  const posterInputRef = useRef<HTMLInputElement>(null);
   const miniReady = useRef(false);
 
   // Resolve posterFilter text (display name or handle) to sender DID
@@ -56,6 +59,23 @@ export function Graph({ result, convoId, onBack }: Props) {
       (s) => s.displayName.toLowerCase() === q || s.handle.toLowerCase() === q || s.did === q,
     )?.did ?? null;
   }, [posterFilter, senders]);
+
+  // Filtered senders for autocomplete dropdown
+  const filteredSenders = useMemo(() => {
+    if (!posterFilter.trim()) return senders;
+    const q = posterFilter.toLowerCase();
+    return senders.filter(
+      (s) =>
+        s.displayName.toLowerCase().includes(q) ||
+        s.handle.toLowerCase().includes(q),
+    );
+  }, [posterFilter, senders]);
+
+  function selectPoster(s: { did: string; displayName: string; handle: string }) {
+    setPosterFilter(s.displayName || s.handle);
+    setShowPosterDropdown(false);
+    setActivePosterIdx(-1);
+  }
 
   // Build MiniSearch index for fuzzy cluster search
   useEffect(() => {
@@ -485,22 +505,64 @@ export function Graph({ result, convoId, onBack }: Props) {
         <div class="poster-filter">
           <input
             type="text"
-            list="poster-list"
+            ref={posterInputRef}
             placeholder="Filter by poster…"
             value={posterFilter}
-            onInput={(e) => setPosterFilter(e.currentTarget.value)}
+            onInput={(e) => {
+              setPosterFilter(e.currentTarget.value);
+              setShowPosterDropdown(true);
+              setActivePosterIdx(-1);
+            }}
+            onFocus={() => setShowPosterDropdown(true)}
+            onBlur={() => setTimeout(() => setShowPosterDropdown(false), 150)}
+            onKeyDown={(e) => {
+              if (!showPosterDropdown || filteredSenders.length === 0) return;
+              if (e.key === "ArrowDown") {
+                e.preventDefault();
+                setActivePosterIdx((prev) =>
+                  prev < filteredSenders.length - 1 ? prev + 1 : 0,
+                );
+              } else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                setActivePosterIdx((prev) =>
+                  prev > 0 ? prev - 1 : filteredSenders.length - 1,
+                );
+              } else if (e.key === "Enter" && activePosterIdx >= 0) {
+                e.preventDefault();
+                selectPoster(filteredSenders[activePosterIdx]);
+              } else if (e.key === "Escape") {
+                setShowPosterDropdown(false);
+                setActivePosterIdx(-1);
+              }
+            }}
           />
-          <datalist id="poster-list">
-            {senders.map((s) => (
-              <option key={s.did} value={s.displayName || s.handle}>
-                {s.handle}
-              </option>
-            ))}
-          </datalist>
+          {showPosterDropdown && filteredSenders.length > 0 && (
+            <ul class="poster-dropdown">
+              {filteredSenders.map((s, i) => (
+                <li
+                  key={s.did}
+                  class={i === activePosterIdx ? "active" : ""}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    selectPoster(s);
+                  }}
+                  onMouseEnter={() => setActivePosterIdx(i)}
+                >
+                  {s.displayName || s.handle}
+                  {s.displayName && s.handle && (
+                    <span class="handle-hint">@{s.handle}</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
           {posterFilter && (
             <button
               class="clear-poster"
-              onClick={() => setPosterFilter("")}
+              onClick={() => {
+                setPosterFilter("");
+                setActivePosterIdx(-1);
+              }}
               title="Clear poster filter"
             >
               ✕
