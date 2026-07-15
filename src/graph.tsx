@@ -49,6 +49,7 @@ export function Graph({ result, convoId, onBack }: Props) {
   const [showPosterDropdown, setShowPosterDropdown] = useState(false);
   const [activePosterIdx, setActivePosterIdx] = useState(-1);
   const posterInputRef = useRef<HTMLInputElement>(null);
+  const [showGraph, setShowGraph] = useState(true);
   const miniReady = useRef(false);
 
   // Resolve posterFilter text (display name or handle) to sender DID
@@ -481,6 +482,14 @@ export function Graph({ result, convoId, onBack }: Props) {
             />
             Fuzzy
           </label>
+          <label class="search-mode-label graph-toggle">
+            <input
+              type="checkbox"
+              checked={showGraph}
+              onChange={(e) => setShowGraph(e.currentTarget.checked)}
+            />
+            Show Graph
+          </label>
           {searchMode === "fuzzy" && (
             <label class="fuzzy-slider">
               <span>Fuzziness: {fuzzyLevel.toFixed(2)}</span>
@@ -589,12 +598,21 @@ export function Graph({ result, convoId, onBack }: Props) {
 
       {/* Graph + sidebar */}
       <div class="graph-layout">
-        <svg ref={svgRef} class="graph-svg" />
+        {showGraph && <svg ref={svgRef} class="graph-svg" />}
 
         {/* Sidebar */}
         {selectedClusters.length > 0 && (
           <div class="graph-sidebar">
-            <h3>{selectedClusters.map((c) => c.label).join(" · ")}</h3>
+            <div class="sidebar-header">
+              <h3>{selectedClusters.map((c) => c.label).join(" · ")}</h3>
+              <button
+                class="clear-selection"
+                onClick={() => setSelectedIds(new Set())}
+                title="Clear selected clusters"
+              >
+                ✕
+              </button>
+            </div>
             <p class="sidebar-meta">
               {selectedClusters.reduce((s, c) => s + c.size, 0)} messages across {selectedClusters.length} cluster{selectedClusters.length > 1 ? "s" : ""} ·{" "}
               {Math.round((selectedClusters.reduce((s, c) => s + c.size, 0) / totalMessages) * 100)}%
