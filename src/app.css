@@ -755,6 +755,17 @@ header h1 {
   border: 1px solid var(--border);
 }
 
+.timeline-full {
+  padding: 0;
+}
+
+.timeline-full svg {
+  display: block;
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+}
+
 .minimap-labels {
   display: flex;
   justify-content: space-between;
@@ -802,6 +813,17 @@ header h1 {
 
 .graph-toggle {
   margin-left: auto;
+}
+
+.graph-mode-select {
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.15rem 0.3rem;
+  font-size: 0.8rem;
+  font-family: var(--font);
+  cursor: pointer;
 }
 
 .fuzzy-slider {

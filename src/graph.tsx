@@ -50,7 +50,7 @@ export function Graph({ result, convoId, onBack }: Props) {
   const [showPosterDropdown, setShowPosterDropdown] = useState(false);
   const [activePosterIdx, setActivePosterIdx] = useState(-1);
   const posterInputRef = useRef<HTMLInputElement>(null);
-  const [showGraph, setShowGraph] = useState(true);
+  const [graphMode, setGraphMode] = useState<"force" | "timeline" | "none">("force");
   const miniReady = useRef(false);
 
   // Resolve posterFilter text (display name or handle) to sender DID
@@ -328,7 +328,7 @@ export function Graph({ result, convoId, onBack }: Props) {
       simulation.stop();
       resizeObserver.disconnect();
     };
-  }, [nodes, links, showGraph]);
+  }, [nodes, links, graphMode]);
 
   // Update node highlights without recreating the graph
   useEffect(() => {
@@ -515,12 +515,15 @@ export function Graph({ result, convoId, onBack }: Props) {
             Fuzzy
           </label>
           <label class="search-mode-label graph-toggle">
-            <input
-              type="checkbox"
-              checked={showGraph}
-              onChange={(e) => setShowGraph(e.currentTarget.checked)}
-            />
-            Show Graph
+            <select
+              class="graph-mode-select"
+              value={graphMode}
+              onChange={(e) => setGraphMode(e.currentTarget.value as "force" | "timeline" | "none")}
+            >
+              <option value="force">Force Graph</option>
+              <option value="timeline">Timeline</option>
+              <option value="none">None</option>
+            </select>
           </label>
           {searchMode === "fuzzy" && (
             <label class="fuzzy-slider">
@@ -630,7 +633,49 @@ export function Graph({ result, convoId, onBack }: Props) {
 
       {/* Graph + sidebar */}
       <div class="graph-layout">
-        {showGraph && <svg ref={svgRef} class="graph-svg" />}
+        {graphMode === "force" && <svg ref={svgRef} class="graph-svg" />}
+        {graphMode === "timeline" && timelineBins && (
+          <div class="timeline-full">
+            <svg
+              viewBox={`0 0 ${timelineBins.bins.length * 6} 100`}
+              preserveAspectRatio="none"
+              style="width:100%;min-height:400px"
+            >
+              {timelineBins.bins.map((bin, i) => {
+                const total = bin.counts.reduce((s, v) => s + v, 0);
+                if (total === 0) return null;
+                const maxH = 88;
+                const barW = 5;
+                const pad = 1;
+                let yOff = 6;
+                return bin.counts.map((cnt, ci) => {
+                  if (cnt === 0) return null;
+                  const h = Math.max(2, (cnt / total) * maxH);
+                  const rect = (
+                    <rect
+                      key={`tl-${i}-${ci}`}
+                      x={i * (barW + pad)}
+                      y={yOff}
+                      width={barW}
+                      height={h}
+                      fill={colorScale(ci, timelineBins!.numClusters)}
+                      opacity={selectedIds.size === 0 || selectedIds.has(ci) ? 0.85 : 0.15}
+                      rx={1}
+                    >
+                      <title>{result.clusters[ci].label} · {cnt} msg{cnt > 1 ? "s" : ""} · {new Date(bin.t).toLocaleDateString()}</title>
+                    </rect>
+                  );
+                  yOff += h;
+                  return rect;
+                });
+              })}
+            </svg>
+            <div class="minimap-labels">
+              <span>{new Date(timelineBins.tMin).toLocaleDateString()}</span>
+              <span>{new Date(timelineBins.tMax).toLocaleDateString()}</span>
+            </div>
+          </div>
+        )}
 
         {/* Sidebar */}
         {selectedClusters.length > 0 && (
@@ -692,8 +737,8 @@ export function Graph({ result, convoId, onBack }: Props) {
         )}
       </div>
 
-      {/* Minimap timeline */}
-      {timelineBins && (
+      {/* Minimap strip (only in force graph mode) */}
+      {graphMode === "force" && timelineBins && (
         <div class="minimap">
           <svg
             viewBox={`0 0 ${timelineBins.bins.length * 6} 50`}
@@ -712,7 +757,7 @@ export function Graph({ result, convoId, onBack }: Props) {
                 const h = Math.max(2, (cnt / total) * maxH);
                 const rect = (
                   <rect
-                    key={`${i}-${ci}`}
+                    key={`mm-${i}-${ci}`}
                     x={i * (barW + pad)}
                     y={yOff}
                     width={barW}
