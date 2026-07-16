@@ -76,6 +76,10 @@ export function App() {
   const [clusterResult, setClusterResult] = useState<ClusterResult | null>(null);
   const [isIncremental, setIsIncremental] = useState(false);
   const [existingCount, setExistingCount] = useState(0);
+
+  const [composeText, setComposeText] = useState("");
+  const [replyTarget, setReplyTarget] = useState<{ messageId: string; text: string } | null>(null);
+  const [sending, setSending] = useState(false);
   const autoStartedRef = useRef<Set<string>>(new Set());
   const [userStarted, setUserStarted] = useState(false);
 
@@ -521,6 +525,27 @@ export function App() {
 
   // --- Graph view ---
   if (state === "graph" && clusterResult) {
+    async function handleSend(e: Event) {
+      e.preventDefault();
+      if (!a || !selectedConvo || !composeText.trim()) return;
+      setSending(true);
+      try {
+        await a.chat.bsky.convo.sendMessage({
+          convoId: selectedConvo.id,
+          message: {
+            text: composeText.trim(),
+            ...(replyTarget ? { replyTo: { messageId: replyTarget.messageId } } : {}),
+          },
+        });
+        setComposeText("");
+        setReplyTarget(null);
+      } catch (e: any) {
+        console.error("Send failed:", e.message);
+      } finally {
+        setSending(false);
+      }
+    }
+
     return (
       <main class="graph-view">
         <header>
@@ -534,7 +559,30 @@ export function App() {
           result={clusterResult}
           convoId={selectedConvo!.id}
           onBack={() => setState("processing")}
+          onReply={(msgId: string, text: string) => setReplyTarget({ messageId: msgId, text })}
         />
+
+        <div class="compose-bar">
+          {replyTarget && (
+            <div class="reply-indicator">
+              Replying to: <em>{replyTarget.text.slice(0, 80)}</em>
+              <button class="reply-cancel" onClick={() => setReplyTarget(null)}>✕</button>
+            </div>
+          )}
+          <form class="compose-form" onSubmit={handleSend}>
+            <input
+              class="compose-input"
+              type="text"
+              placeholder={replyTarget ? "Type a reply..." : "Type a message..."}
+              value={composeText}
+              onInput={(e) => setComposeText(e.currentTarget.value)}
+              disabled={sending}
+            />
+            <button class="compose-send" type="submit" disabled={sending || !composeText.trim()}>
+              {sending ? "Sending…" : "Send"}
+            </button>
+          </form>
+        </div>
       </main>
     );
   }

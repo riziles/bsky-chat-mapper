@@ -238,4 +238,47 @@ test.describe("Bluesky Chat Mapper", () => {
     const sidebarMsgs = page.locator(".sidebar-msg");
     await expect(sidebarMsgs.first()).toBeVisible({ timeout: 5000 });
   });
+
+  // -----------------------------------------------------------------------
+  // 8 — Send message and reply
+  // -----------------------------------------------------------------------
+  test("send message and reply", async ({ page }) => {
+    await mockApiRoutes(page);
+    await page.goto(BASE);
+
+    await page.fill("input[placeholder*='alice']", "alice.bsky.social");
+    await page.fill("input[placeholder*='password']", "hunter2");
+    await page.click("button:has-text('Sign in')");
+    await expect(page.locator(".convo-item").first()).toBeVisible({ timeout: 10000 });
+    await page.locator(".convo-item").first().click();
+    await page.selectOption("select", "all");
+    await page.locator("button:has-text('Start')").click();
+    const genMapBtn = page.locator("button:has-text('Generate Map')");
+    await expect(genMapBtn).toBeVisible({ timeout: 60000 });
+    await genMapBtn.click();
+    await expect(page.locator(".graph-svg g circle").first()).toBeVisible({ timeout: 30000 });
+
+    // Open sidebar by clicking a node
+    await page.locator(".graph-svg g circle").first().click({ force: true });
+    await expect(page.locator(".graph-sidebar")).toBeVisible({ timeout: 5000 });
+
+    // Click Reply on a sidebar message
+    const replyBtn = page.locator(".reply-btn").first();
+    await expect(replyBtn).toBeVisible({ timeout: 5000 });
+    await replyBtn.click();
+
+    // Verify reply indicator appears
+    await expect(page.locator(".reply-indicator")).toBeVisible();
+    await expect(page.locator(".reply-indicator")).toContainText("Replying to:");
+
+    // Type and send (press Enter to submit the form)
+    await page.fill(".compose-input", "test reply message");
+    await page.locator(".compose-send").click({ force: true });
+
+    // Input should be cleared after successful send
+    await expect(page.locator(".compose-input")).toHaveValue("", { timeout: 5000 });
+
+    // Reply indicator should clear after send
+    await expect(page.locator(".reply-indicator")).not.toBeVisible({ timeout: 5000 });
+  });
 });

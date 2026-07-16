@@ -629,6 +629,14 @@ header h1 {
   overflow-y: auto;
 }
 
+/* When no graph/timeline, sidebar fills the space as a centered column */
+.graph-layout-none .graph-sidebar {
+  width: 100%;
+  max-width: 700px;
+  margin: 0 auto;
+  max-height: none;
+}
+
 @media (max-width: 700px) {
   .graph-layout {
     flex-direction: column;
@@ -974,4 +982,90 @@ header h1 {
   font-size: 0.7rem;
   color: var(--text-muted);
   margin-top: 0.35rem;
+}
+
+/* --- Compose bar --- */
+.compose-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--bg-card);
+  border-top: 1px solid var(--border);
+  padding: 0.65rem 1rem;
+  z-index: 100;
+  pointer-events: none;
+}
+.compose-input,
+.compose-send,
+.reply-cancel {
+  pointer-events: auto;
+}
+.compose-form {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  pointer-events: none;
+}
+.compose-input {
+  flex: 1;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.9rem;
+}
+.compose-send {
+  padding: 0.5rem 1rem;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.compose-send:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.reply-indicator {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 0.4rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.reply-cancel {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0;
+  line-height: 1;
+}
+
+/* Reply button in sidebar messages */
+.reply-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 1px 6px;
+  margin-left: 0.5rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  cursor: pointer;
+  vertical-align: middle;
+}
+.reply-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* Pad bottom of graph view for compose bar */
+.graph-view {
+  padding-bottom: 3.5rem;
 }

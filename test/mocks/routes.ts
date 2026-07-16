@@ -47,4 +47,26 @@ export async function mockApiRoutes(page: Page) {
       }),
     });
   });
+
+  // Send message
+  await page.route((url) => url.pathname.includes("/xrpc/chat.bsky.convo.sendMessage"), (route) => {
+    const rawPostData = route.request().postData();
+    const body = rawPostData ? JSON.parse(rawPostData) : {};
+    const msgId = `chat.es.bsky:msg-test-${Date.now()}`;
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        id: msgId,
+        rev: "rev-1",
+        text: body.message?.text ?? "",
+        sender: { did: mockSession.did },
+        sentAt: new Date().toISOString(),
+        ...(body.message?.replyTo ? {
+          replyTo: { $type: "chat.bsky.convo.defs#messageView", id: body.message.replyTo.messageId, rev: "rev-0", text: "...", sender: { did: "did:plc:other" }, sentAt: new Date().toISOString() },
+        } : {}),
+        $type: "chat.bsky.convo.defs#messageView",
+      }),
+    });
+  });
 }
