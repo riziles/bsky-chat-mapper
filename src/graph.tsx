@@ -639,7 +639,7 @@ export function Graph({ result, convoId, onBack, onReply }: Props) {
       </div>
 
       {/* Graph + sidebar */}
-      <div class="graph-layout">
+      <div class={`graph-layout${graphMode === "none" ? " graph-layout-none" : ""}`}>
         {graphMode === "force" && <svg ref={svgRef} class="graph-svg" />}
         {graphMode === "timeline" && timelineBins && (
           <div class="timeline-full">

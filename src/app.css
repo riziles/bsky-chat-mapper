@@ -629,6 +629,14 @@ header h1 {
   overflow-y: auto;
 }
 
+/* When no graph/timeline, sidebar fills the space as a centered column */
+.graph-layout-none .graph-sidebar {
+  width: 100%;
+  max-width: 700px;
+  margin: 0 auto;
+  max-height: none;
+}
+
 @media (max-width: 700px) {
   .graph-layout {
     flex-direction: column;
