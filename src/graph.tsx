@@ -722,7 +722,7 @@ export function Graph({ result, convoId, onBack, onReply }: Props) {
                     <div class="sidebar-msg-time">
                       {new Date(m.sentAt).toLocaleString()}
                       {onReply && (
-                        <button class="reply-btn" onClick={() => onReply(m.id, m.text)}>Reply</button>
+                        <button class="reply-btn" onClick={() => onReply(m.id.substring(m.id.indexOf(":") + 1), m.text)}>Reply</button>
                       )}
                     </div>
                   </li>
@@ -753,7 +753,7 @@ export function Graph({ result, convoId, onBack, onReply }: Props) {
                   <div class="sidebar-msg-time">
                     {new Date(r.msg.sentAt).toLocaleString()}
                     {onReply && (
-                      <button class="reply-btn" onClick={() => onReply(r.msg.id, r.msg.text)}>Reply</button>
+                      <button class="reply-btn" onClick={() => onReply(r.msg.id.substring(r.msg.id.indexOf(":") + 1), r.msg.text)}>Reply</button>
                     )}
                   </div>
                 </li>
