@@ -155,6 +155,14 @@ Three-mode dropdown replaces the old on/off toggle:
 - "Deselect all" button in sidebar header clears selection
 - Timestamps shown on all messages regardless of source
 
+### Compose & Reply
+
+- Fixed compose bar at bottom of graph view with text input and Send button
+- Uses `chat.bsky.convo.sendMessage` — real sends, not mocked
+- Reply buttons on every sidebar message; clicking sets a reply target
+- Reply indicator shows which message you're replying to, with a cancel button
+- Message IDs for replies are extracted from IndexedDB composite keys
+
 ## Search (per-message)
 
 > **Note:** Standalone per-message search was removed in favor of the

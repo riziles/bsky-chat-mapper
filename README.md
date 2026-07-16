@@ -14,6 +14,7 @@ A static web app that pulls your Bluesky group chat history, generates semantic 
 - **Timeline minimap** — stacked colored bars showing message density over time; clickable to select clusters
 - **Three view modes**: Force Graph, Timeline, or None (sidebar-only)
 - **Multi-select** — click multiple clusters to compare topics side-by-side
+- **Compose + reply** — send messages directly, reply to any message in the sidebar
 - **Poster filter** — autocomplete dropdown to filter by sender, with keyboard navigation
 - **Dual-mode search**: semantic (meaning-based) and fuzzy text (typo-tolerant) via [MiniSearch](https://github.com/lucaong/minisearch)
 - **IndexedDB persistence** — subsequent visits only pull new messages
